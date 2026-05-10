@@ -126,9 +126,40 @@ input[type="range"] { flex: 1; }
 .shortcuts { padding: 10px 12px; margin-top: auto; border-top: 1px solid #0f3460; }
 .shortcut-list { color: #556677; font-size: 10px; line-height: 1.9; }
 .shortcut-list kbd { background: #0f3460; color: #88aacc; padding: 1px 4px; border-radius: 3px; font-family: inherit; font-size: 10px; }
+/* 登录遮罩 */
+.login-mask {
+  position: fixed; inset: 0; z-index: 999;
+  background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center;
+}
+.login-box {
+  background: #16213e; border: 1px solid #e94560; border-radius: 10px;
+  padding: 24px 28px; text-align: center; min-width: 240px;
+}
+.login-box h2 { color: #f0e6d3; font-size: 15px; margin-bottom: 14px; letter-spacing: 1px; }
+.login-box input {
+  background: #0f3460; border: 1px solid #1a4a8a; color: #f0e6d3;
+  padding: 8px 12px; border-radius: 6px; font-size: 14px; width: 100%;
+  outline: none; text-align: center; letter-spacing: 4px;
+}
+.login-box input:focus { border-color: #e94560; }
+.login-box button {
+  margin-top: 12px; background: #e94560; color: #fff; border: none;
+  padding: 8px 28px; border-radius: 6px; cursor: pointer; font-size: 13px;
+}
+.login-box button:hover { background: #c73850; }
+.login-box .err { color: #f44336; font-size: 11px; margin-top: 8px; display: none; }
 </style>
 </head>
 <body>
+
+<div class="login-mask" id="loginMask">
+  <div class="login-box">
+    <h2>管理后台登录</h2>
+    <input type="password" id="loginPwd" placeholder="请输入密码" autofocus>
+    <div class="err" id="loginErr">密码错误，请重试</div>
+    <button onclick="checkLogin()">进入系统</button>
+  </div>
+</div>
 
 <div class="header">
   <h1>胡氏清念宗祠重光庆典交通规划系统</h1>
@@ -929,7 +960,27 @@ document.addEventListener('keydown', e=>{
   }
 });
 
-loadData().then(() => { loadImage(); updateStats(); });
+// 登录验证
+function checkLogin() {
+  const pwd = document.getElementById('loginPwd').value;
+  if (pwd === '112233') {
+    sessionStorage.setItem('admin_auth', '1');
+    document.getElementById('loginMask').style.display = 'none';
+    loadData().then(() => { loadImage(); updateStats(); });
+  } else {
+    document.getElementById('loginErr').style.display = 'block';
+    document.getElementById('loginPwd').value = '';
+    document.getElementById('loginPwd').focus();
+  }
+}
+document.getElementById('loginPwd').addEventListener('keydown', e => {
+  if (e.key === 'Enter') checkLogin();
+});
+
+if (sessionStorage.getItem('admin_auth') === '1') {
+  document.getElementById('loginMask').style.display = 'none';
+  loadData().then(() => { loadImage(); updateStats(); });
+}
 </script>
 </body>
 </html>
