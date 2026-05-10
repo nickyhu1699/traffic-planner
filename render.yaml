@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: traffic-planner
+    runtime: node
+    buildCommand: echo "No build needed"
+    startCommand: node server.js
+    plan: free
+    envVars:
+      - key: NODE_ENV
+        value: production

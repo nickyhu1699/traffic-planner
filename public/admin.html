@@ -329,7 +329,7 @@ async function saveHistory() {
       await fetch('/api/data', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ annotations: history, parkingState })
+        body: JSON.stringify({ annotations: history, parkingState, displayScale: window._displayScale || 1 })
       });
     } catch (e) { console.warn('保存到服务器失败', e); }
   }
@@ -355,6 +355,8 @@ function loadImage() {
     if (w > maxW) { h *= maxW / w; w = maxW; }
     if (h > maxH) { w *= maxH / h; h = maxH; }
     canvas.width = Math.round(w); canvas.height = Math.round(h);
+    // 记录 display canvas 和原图的比例，保存到数据中
+    window._displayScale = img.width / canvas.width;
     redraw();
   };
   img.src = 'map.jpg';

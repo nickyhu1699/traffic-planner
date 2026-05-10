@@ -10,61 +10,65 @@ body { background: #1a1a2e; font-family: -apple-system, BlinkMacSystemFont, "Seg
 
 .header {
   background: linear-gradient(135deg, #1a1a2e, #16213e);
-  padding: 10px 16px; text-align: center;
-  border-bottom: 2px solid #e94560; position: relative;
+  padding: 6px 12px; text-align: center;
+  border-bottom: 1px solid #e94560; position: relative;
 }
-.header h1 { color: #f0e6d3; font-size: 16px; letter-spacing: 2px; }
-.header .sub { color: #8899aa; font-size: 11px; margin-top: 2px; }
+.header h1 { color: #f0e6d3; font-size: 13px; letter-spacing: 1px; }
+.header .sub { color: #667; font-size: 9px; }
 .header .refresh-info {
-  position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
-  color: #556; font-size: 10px;
+  position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+  color: #445; font-size: 9px;
 }
 
-.content { flex: 1; padding: 12px; overflow-y: auto; }
+.content { flex: 1; padding: 8px; overflow-y: auto; }
 
-/* 总览 */
+/* 地图 */
+.map-section { margin-bottom: 8px; position: relative; }
+.map-section h3 { display: none; }
+.map-wrap {
+  border-radius: 6px; overflow: hidden; border: 1px solid #0f3460;
+}
+.map-wrap canvas { width: 100%; display: block; }
+
+/* 总览 - 悬浮在地图左上角 */
 .overview {
-  display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 16px;
+  position: absolute; top: 6px; left: 6px; z-index: 5;
+  display: flex; gap: 0;
+  background: rgba(22,33,62,0.88); border-radius: 5px; overflow: hidden;
+  backdrop-filter: blur(4px);
 }
 .overview-card {
-  background: #16213e; border-radius: 10px; padding: 12px; text-align: center;
+  padding: 3px 8px; text-align: center;
+  border-right: 1px solid rgba(15,52,96,0.5);
 }
-.overview-card .num { font-size: 28px; font-weight: 700; }
-.overview-card .label { font-size: 11px; color: #8899aa; margin-top: 2px; }
+.overview-card:last-child { border-right: none; }
+.overview-card .num { font-size: 13px; font-weight: 700; }
+.overview-card .label { font-size: 8px; color: #667; margin-top: 0; }
 
-/* 停车场卡片 */
-.lot-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+/* 停车场卡片 - 紧凑 */
+.lot-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
 .lot-card {
-  background: #16213e; border-radius: 12px; padding: 14px;
-  border-left: 4px solid #4caf50; position: relative;
-  transition: all 0.3s;
+  background: #16213e; border-radius: 6px; padding: 8px 8px 6px;
+  border-left: 3px solid #4caf50; position: relative;
 }
 .lot-card.warning { border-left-color: #ff9800; }
 .lot-card.full { border-left-color: #f44336; background: #1e1520; }
 
-.lot-name { color: #f0e6d3; font-size: 16px; font-weight: 600; }
-.lot-status { margin-top: 8px; }
-.lot-bar { height: 8px; background: #0f3460; border-radius: 4px; overflow: hidden; margin-top: 6px; }
-.lot-bar .fill { height: 100%; border-radius: 4px; transition: width 0.5s; }
-.lot-detail { display: flex; justify-content: space-between; margin-top: 6px; font-size: 12px; color: #8899aa; }
-.lot-detail .free { font-weight: 600; font-size: 14px; }
+.lot-name { color: #f0e6d3; font-size: 12px; font-weight: 600; }
+.lot-status { margin-top: 4px; }
+.lot-bar { height: 4px; background: #0f3460; border-radius: 2px; overflow: hidden; margin-top: 3px; }
+.lot-bar .fill { height: 100%; border-radius: 2px; transition: width 0.5s; }
+.lot-detail { display: flex; justify-content: space-between; margin-top: 3px; font-size: 10px; color: #667; }
+.lot-detail .free { font-weight: 600; font-size: 11px; }
 .lot-badge {
-  position: absolute; top: 10px; right: 10px;
-  font-size: 11px; padding: 2px 8px; border-radius: 10px; font-weight: 600;
+  position: absolute; top: 6px; right: 6px;
+  font-size: 9px; padding: 1px 5px; border-radius: 6px; font-weight: 600;
 }
-.badge-free { background: rgba(76,175,80,0.2); color: #4caf50; }
-.badge-busy { background: rgba(255,152,0,0.2); color: #ff9800; }
-.badge-full { background: rgba(244,67,54,0.2); color: #f44336; }
+.badge-free { background: rgba(76,175,80,0.15); color: #4caf50; }
+.badge-busy { background: rgba(255,152,0,0.15); color: #ff9800; }
+.badge-full { background: rgba(244,67,54,0.15); color: #f44336; }
 
-.loading { text-align: center; color: #556; padding: 40px; font-size: 14px; }
-
-/* 地图缩略 */
-.map-section { margin-top: 16px; }
-.map-section h3 { color: #8899aa; font-size: 12px; margin-bottom: 8px; letter-spacing: 1px; }
-.map-wrap {
-  border-radius: 10px; overflow: hidden; border: 1px solid #0f3460;
-}
-.map-wrap img { width: 100%; display: block; }
+.loading { text-align: center; color: #445; padding: 20px; font-size: 12px; }
 </style>
 </head>
 <body>
@@ -76,30 +80,31 @@ body { background: #1a1a2e; font-family: -apple-system, BlinkMacSystemFont, "Seg
 </div>
 
 <div class="content">
-  <div class="overview">
-    <div class="overview-card">
-      <div class="num" id="totalCap" style="color:#f0e6d3;">-</div>
-      <div class="label">总车位</div>
-    </div>
-    <div class="overview-card">
-      <div class="num" id="totalParked" style="color:#ff9800;">-</div>
-      <div class="label">已停放</div>
-    </div>
-    <div class="overview-card">
-      <div class="num" id="totalFree" style="color:#4caf50;">-</div>
-      <div class="label">剩余</div>
-    </div>
-  </div>
-
-  <div class="lot-grid" id="lotGrid">
-    <div class="loading">正在获取停车数据...</div>
-  </div>
-
+  <!-- 地图 + 悬浮数据 -->
   <div class="map-section">
     <h3>交通规划图</h3>
     <div class="map-wrap">
       <canvas id="mapCanvas"></canvas>
     </div>
+    <div class="overview">
+      <div class="overview-card">
+        <div class="num" id="totalCap" style="color:#c0c8d4;">-</div>
+        <div class="label">总车位</div>
+      </div>
+      <div class="overview-card">
+        <div class="num" id="totalParked" style="color:#ff9800;">-</div>
+        <div class="label">已停</div>
+      </div>
+      <div class="overview-card">
+        <div class="num" id="totalFree" style="color:#4caf50;">-</div>
+        <div class="label">剩余</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 停车场卡片 -->
+  <div class="lot-grid" id="lotGrid">
+    <div class="loading">正在获取停车数据...</div>
   </div>
 </div>
 
@@ -173,43 +178,83 @@ function renderMap(data) {
   const img = new Image();
   img.onload = () => {
     const maxW = document.querySelector('.map-wrap').clientWidth;
-    const scale = maxW / img.width;
+    const viewScale = maxW / img.width;
     canvas.width = maxW;
-    canvas.height = img.height * scale;
+    canvas.height = img.height * viewScale;
+    // 画底图（稍微提亮）
+    ctx.filter = 'brightness(130%)';
     ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-    // 画停车场标注
-    const sx = canvas.width / img.width; // 原图到canvas的缩放比
-    // 需要从 display canvas 比例反算
-    // admin中 canvas 尺寸是 fit 后的，我们用原图尺寸
-    // 先读取 admin 存储的标注坐标（基于 display canvas）
-    // 简化：直接用标注坐标，按 display canvas → 原图比例反算
+    ctx.filter = 'none';
+
+    // admin 坐标基于 display canvas，需要反算到原图再缩放到 viewer
+    const adminScale = data.displayScale || 1; // 原图宽 / display canvas 宽
+    // 坐标转换: admin坐标 * adminScale = 原图坐标，再 * viewScale = viewer坐标
+    // 合并: admin坐标 * (adminScale * viewScale) = viewer坐标... 不对
+    // admin坐标 是 display canvas 上的，原图 = admin坐标 * adminScale
+    // viewer canvas = 原图 * viewScale
+    // 所以 viewer坐标 = admin坐标 * adminScale * viewScale
+    const s = adminScale * viewScale;
+
     (data.annotations || []).forEach(item => {
       if (item.type === 'parking') {
-        const x = Math.min(item.x, item.x + item.w);
-        const y = Math.min(item.y, item.y + item.h);
-        const w = Math.abs(item.w);
-        const h = Math.abs(item.h);
+        const x = Math.min(item.x, item.x + item.w) * s;
+        const y = Math.min(item.y, item.y + item.h) * s;
+        const w = Math.abs(item.w) * s;
+        const h = Math.abs(item.h) * s;
         const cur = item.current || 0, cap = item.cap || 0;
         const pct = cap > 0 ? cur / cap : 0;
-        // 标注坐标是 display canvas 上的，按 display canvas 原始尺寸比例画
-        // 这里简单起见直接画在固定位置
-        ctx.fillStyle = pct >= 1 ? 'rgba(244,67,54,0.4)' : pct >= 0.7 ? 'rgba(255,152,0,0.3)' : 'rgba(76,175,80,0.3)';
+        // 填充
+        ctx.fillStyle = pct >= 1 ? 'rgba(244,67,54,0.35)' : pct >= 0.7 ? 'rgba(255,152,0,0.25)' : 'rgba(76,175,80,0.2)';
         ctx.fillRect(x, y, w, h);
+        // 边框
         ctx.strokeStyle = pct >= 1 ? '#f44336' : pct >= 0.7 ? '#ff9800' : '#4caf50';
-        ctx.lineWidth = 2;
+        ctx.lineWidth = pct >= 1 ? 3 : 2;
+        ctx.setLineDash(pct >= 1 ? [] : [6,3]);
         ctx.strokeRect(x, y, w, h);
-        ctx.font = 'bold 12px sans-serif';
-        ctx.textAlign = 'center';
+        ctx.setLineDash([]);
+        // 名称
+        const fs = Math.max(Math.min(w, h) * 0.2, 11);
+        ctx.font = `bold ${fs}px sans-serif`;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.strokeStyle = 'rgba(0,0,0,0.7)'; ctx.lineWidth = 2; ctx.lineJoin = 'round';
+        ctx.strokeText(item.name, x+w/2, y+h/2-fs*0.3);
         ctx.fillStyle = '#fff';
-        ctx.strokeStyle = 'rgba(0,0,0,0.6)';
-        ctx.lineWidth = 2;
-        ctx.strokeText(item.name, x + w/2, y + h/2);
-        ctx.fillText(item.name, x + w/2, y + h/2);
-        ctx.font = 'bold 10px sans-serif';
-        const status = `${cur}/${cap}`;
-        ctx.strokeText(status, x + w/2, y + h/2 + 14);
-        ctx.fillText(status, x + w/2, y + h/2 + 14);
+        ctx.fillText(item.name, x+w/2, y+h/2-fs*0.3);
+        // 已停/总数
+        ctx.font = `bold ${fs*0.7}px sans-serif`;
+        ctx.strokeText(`${cur}/${cap} 台`, x+w/2, y+h/2+fs*0.5);
+        ctx.fillStyle = pct >= 1 ? '#f44336' : '#fff';
+        ctx.fillText(`${cur}/${cap} 台`, x+w/2, y+h/2+fs*0.5);
+        // 已满标记
+        if (pct >= 1) {
+          ctx.font = 'bold 10px sans-serif';
+          ctx.fillStyle = 'rgba(244,67,54,0.9)';
+          ctx.fillText('已满', x+w-16, y+10);
+        }
+        ctx.textAlign = 'start'; ctx.textBaseline = 'alphabetic';
+      } else if (item.type === 'guard') {
+        // 指挥员
+        const gx = item.x * s, gy = item.y * s;
+        ctx.beginPath(); ctx.arc(gx, gy, 8, 0, Math.PI*2);
+        ctx.fillStyle = 'rgba(0,188,212,0.2)'; ctx.fill();
+        ctx.strokeStyle = '#00bcd4'; ctx.lineWidth = 1.5; ctx.stroke();
+        ctx.beginPath(); ctx.arc(gx, gy-5, 2.5, 0, Math.PI*2);
+        ctx.fillStyle = '#00bcd4'; ctx.fill();
+        ctx.font = 'bold 8px sans-serif'; ctx.textAlign = 'center';
+        ctx.fillStyle = '#00bcd4'; ctx.fillText(item.name || '指挥', gx, gy+14);
         ctx.textAlign = 'start';
+      } else if (item.type === 'traffic') {
+        // 导流箭头
+        const ax1=item.x1*s, ay1=item.y1*s, ax2=item.x2*s, ay2=item.y2*s;
+        const headLen = 10;
+        const angle = Math.atan2(ay2-ay1, ax2-ax1);
+        ctx.strokeStyle = '#ff9800'; ctx.lineWidth = 3; ctx.lineCap = 'round';
+        ctx.beginPath(); ctx.moveTo(ax1,ay1); ctx.lineTo(ax2,ay2); ctx.stroke();
+        ctx.fillStyle = '#ff9800';
+        ctx.beginPath(); ctx.moveTo(ax2,ay2);
+        ctx.lineTo(ax2-headLen*Math.cos(angle-0.5), ay2-headLen*Math.sin(angle-0.5));
+        ctx.lineTo(ax2-headLen*Math.cos(angle+0.5), ay2-headLen*Math.sin(angle+0.5));
+        ctx.closePath(); ctx.fill();
       }
     });
   };
