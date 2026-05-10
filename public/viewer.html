@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>胡氏清念宗祠重光庆典 - 停车实况</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #1a1a2e; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; min-height: 100vh; display: flex; flex-direction: column; }
+
+.header {
+  background: linear-gradient(135deg, #1a1a2e, #16213e);
+  padding: 10px 16px; text-align: center;
+  border-bottom: 2px solid #e94560; position: relative;
+}
+.header h1 { color: #f0e6d3; font-size: 16px; letter-spacing: 2px; }
+.header .sub { color: #8899aa; font-size: 11px; margin-top: 2px; }
+.header .refresh-info {
+  position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+  color: #556; font-size: 10px;
+}
+
+.content { flex: 1; padding: 12px; overflow-y: auto; }
+
+/* 总览 */
+.overview {
+  display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 16px;
+}
+.overview-card {
+  background: #16213e; border-radius: 10px; padding: 12px; text-align: center;
+}
+.overview-card .num { font-size: 28px; font-weight: 700; }
+.overview-card .label { font-size: 11px; color: #8899aa; margin-top: 2px; }
+
+/* 停车场卡片 */
+.lot-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.lot-card {
+  background: #16213e; border-radius: 12px; padding: 14px;
+  border-left: 4px solid #4caf50; position: relative;
+  transition: all 0.3s;
+}
+.lot-card.warning { border-left-color: #ff9800; }
+.lot-card.full { border-left-color: #f44336; background: #1e1520; }
+
+.lot-name { color: #f0e6d3; font-size: 16px; font-weight: 600; }
+.lot-status { margin-top: 8px; }
+.lot-bar { height: 8px; background: #0f3460; border-radius: 4px; overflow: hidden; margin-top: 6px; }
+.lot-bar .fill { height: 100%; border-radius: 4px; transition: width 0.5s; }
+.lot-detail { display: flex; justify-content: space-between; margin-top: 6px; font-size: 12px; color: #8899aa; }
+.lot-detail .free { font-weight: 600; font-size: 14px; }
+.lot-badge {
+  position: absolute; top: 10px; right: 10px;
+  font-size: 11px; padding: 2px 8px; border-radius: 10px; font-weight: 600;
+}
+.badge-free { background: rgba(76,175,80,0.2); color: #4caf50; }
+.badge-busy { background: rgba(255,152,0,0.2); color: #ff9800; }
+.badge-full { background: rgba(244,67,54,0.2); color: #f44336; }
+
+.loading { text-align: center; color: #556; padding: 40px; font-size: 14px; }
+
+/* 地图缩略 */
+.map-section { margin-top: 16px; }
+.map-section h3 { color: #8899aa; font-size: 12px; margin-bottom: 8px; letter-spacing: 1px; }
+.map-wrap {
+  border-radius: 10px; overflow: hidden; border: 1px solid #0f3460;
+}
+.map-wrap img { width: 100%; display: block; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>胡氏清念宗祠重光庆典</h1>
+  <div class="sub">停车实况 · 自动刷新</div>
+  <div class="refresh-info" id="refreshInfo">加载中...</div>
+</div>
+
+<div class="content">
+  <div class="overview">
+    <div class="overview-card">
+      <div class="num" id="totalCap" style="color:#f0e6d3;">-</div>
+      <div class="label">总车位</div>
+    </div>
+    <div class="overview-card">
+      <div class="num" id="totalParked" style="color:#ff9800;">-</div>
+      <div class="label">已停放</div>
+    </div>
+    <div class="overview-card">
+      <div class="num" id="totalFree" style="color:#4caf50;">-</div>
+      <div class="label">剩余</div>
+    </div>
+  </div>
+
+  <div class="lot-grid" id="lotGrid">
+    <div class="loading">正在获取停车数据...</div>
+  </div>
+
+  <div class="map-section">
+    <h3>交通规划图</h3>
+    <div class="map-wrap">
+      <canvas id="mapCanvas"></canvas>
+    </div>
+  </div>
+</div>
+
+<script>
+const REFRESH_INTERVAL = 5000; // 5秒刷新
+let lastUpdate = 0;
+
+async function fetchData() {
+  try {
+    const res = await fetch('/api/data');
+    if (!res.ok) throw new Error('请求失败');
+    const data = await res.json();
+    renderData(data);
+    lastUpdate = Date.now();
+    document.getElementById('refreshInfo').textContent = '已更新';
+    setTimeout(() => {
+      const sec = Math.round((Date.now() - lastUpdate) / 1000);
+      document.getElementById('refreshInfo').textContent = sec + '秒前更新';
+    }, 1000);
+  } catch (e) {
+    document.getElementById('refreshInfo').textContent = '连接失败';
+  }
+}
+
+function renderData(data) {
+  const lots = (data.annotations || []).filter(a => a.type === 'parking');
+  const totalCap = lots.reduce((s, l) => s + (l.cap || 0), 0);
+  const totalParked = lots.reduce((s, l) => s + (l.current || 0), 0);
+  const totalFree = totalCap - totalParked;
+
+  document.getElementById('totalCap').textContent = totalCap;
+  document.getElementById('totalParked').textContent = totalParked;
+  document.getElementById('totalFree').textContent = totalFree;
+  document.getElementById('totalFree').style.color = totalFree > 0 ? '#4caf50' : '#f44336';
+
+  if (!lots.length) {
+    document.getElementById('lotGrid').innerHTML = '<div class="loading">暂无停车数据</div>';
+    return;
+  }
+
+  document.getElementById('lotGrid').innerHTML = lots.map(l => {
+    const cur = l.current || 0, cap = l.cap || 0;
+    const pct = cap > 0 ? cur / cap : 0;
+    const free = cap - cur;
+    let cls = '', badge = '', badgeText = '';
+    if (pct >= 1) { cls = 'full'; badge = 'badge-full'; badgeText = '已满'; }
+    else if (pct >= 0.7) { cls = 'warning'; badge = 'badge-busy'; badgeText = '紧张'; }
+    else { badge = 'badge-free'; badgeText = '充足'; }
+    const barColor = pct >= 1 ? '#f44336' : pct >= 0.7 ? '#ff9800' : '#4caf50';
+    return `<div class="lot-card ${cls}">
+      <span class="lot-badge ${badge}">${badgeText}</span>
+      <div class="lot-name">${l.name}</div>
+      <div class="lot-status">
+        <div class="lot-bar"><div class="fill" style="width:${Math.min(pct*100,100)}%;background:${barColor}"></div></div>
+        <div class="lot-detail">
+          <span>已停 ${cur} / ${cap} 台</span>
+          <span class="free" style="color:${free>0?'#4caf50':'#f44336'}">${free > 0 ? '剩余 '+free+' 台' : '已满'}</span>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  // 渲染地图缩略
+  renderMap(data);
+}
+
+// 渲染带标注的地图
+function renderMap(data) {
+  const canvas = document.getElementById('mapCanvas');
+  const ctx = canvas.getContext('2d');
+  const img = new Image();
+  img.onload = () => {
+    const maxW = document.querySelector('.map-wrap').clientWidth;
+    const scale = maxW / img.width;
+    canvas.width = maxW;
+    canvas.height = img.height * scale;
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    // 画停车场标注
+    const sx = canvas.width / img.width; // 原图到canvas的缩放比
+    // 需要从 display canvas 比例反算
+    // admin中 canvas 尺寸是 fit 后的，我们用原图尺寸
+    // 先读取 admin 存储的标注坐标（基于 display canvas）
+    // 简化：直接用标注坐标，按 display canvas → 原图比例反算
+    (data.annotations || []).forEach(item => {
+      if (item.type === 'parking') {
+        const x = Math.min(item.x, item.x + item.w);
+        const y = Math.min(item.y, item.y + item.h);
+        const w = Math.abs(item.w);
+        const h = Math.abs(item.h);
+        const cur = item.current || 0, cap = item.cap || 0;
+        const pct = cap > 0 ? cur / cap : 0;
+        // 标注坐标是 display canvas 上的，按 display canvas 原始尺寸比例画
+        // 这里简单起见直接画在固定位置
+        ctx.fillStyle = pct >= 1 ? 'rgba(244,67,54,0.4)' : pct >= 0.7 ? 'rgba(255,152,0,0.3)' : 'rgba(76,175,80,0.3)';
+        ctx.fillRect(x, y, w, h);
+        ctx.strokeStyle = pct >= 1 ? '#f44336' : pct >= 0.7 ? '#ff9800' : '#4caf50';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(x, y, w, h);
+        ctx.font = 'bold 12px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#fff';
+        ctx.strokeStyle = 'rgba(0,0,0,0.6)';
+        ctx.lineWidth = 2;
+        ctx.strokeText(item.name, x + w/2, y + h/2);
+        ctx.fillText(item.name, x + w/2, y + h/2);
+        ctx.font = 'bold 10px sans-serif';
+        const status = `${cur}/${cap}`;
+        ctx.strokeText(status, x + w/2, y + h/2 + 14);
+        ctx.fillText(status, x + w/2, y + h/2 + 14);
+        ctx.textAlign = 'start';
+      }
+    });
+  };
+  img.src = 'map.jpg';
+}
+
+// 定时刷新
+fetchData();
+setInterval(fetchData, REFRESH_INTERVAL);
+</script>
+</body>
+</html>

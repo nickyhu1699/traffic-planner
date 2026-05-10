@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>胡氏清念宗祠重光庆典交通规划系统</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: #1a1a2e; font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+  min-height: 100vh; display: flex; align-items: center; justify-content: center;
+}
+.container { text-align: center; }
+h1 { color: #f0e6d3; font-size: 22px; letter-spacing: 3px; margin-bottom: 30px; }
+.links { display: flex; gap: 20px; justify-content: center; flex-wrap: wrap; }
+.card {
+  background: #16213e; border: 1px solid #0f3460; border-radius: 12px;
+  padding: 30px 40px; text-decoration: none; transition: all 0.2s;
+  min-width: 200px;
+}
+.card:hover { border-color: #e94560; transform: translateY(-2px); }
+.card h2 { color: #f0e6d3; font-size: 18px; margin-bottom: 8px; }
+.card p { color: #8899aa; font-size: 13px; }
+.card.admin { border-top: 3px solid #e94560; }
+.card.viewer { border-top: 3px solid #4caf50; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>胡氏清念宗祠重光庆典交通规划系统</h1>
+  <div class="links">
+    <a class="card admin" href="/admin">
+      <h2>管理后台</h2>
+      <p>标注停车场 · 更新车位 · 交通导流</p>
+    </a>
+    <a class="card viewer" href="/viewer">
+      <h2>来宾停车实况</h2>
+      <p>实时查看各停车场剩余车位</p>
+    </a>
+  </div>
+</div>
+</body>
+</html>
