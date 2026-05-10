@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>胡氏清念宗祠重光庆典交通规划系统</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #1a1a2e; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; overflow: hidden; height: 100vh; display: flex; flex-direction: column; }
+
+.header {
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  padding: 10px 20px;
+  text-align: center;
+  border-bottom: 2px solid #e94560;
+  flex-shrink: 0;
+}
+.header h1 {
+  color: #f0e6d3;
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: 4px;
+  text-shadow: 0 0 10px rgba(233,69,96,0.3);
+}
+
+.main {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+
+/* 左侧画布区 */
+.canvas-area {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: auto;
+  position: relative;
+  background: #111;
+}
+
+canvas {
+  cursor: crosshair;
+  box-shadow: 0 0 30px rgba(0,0,0,0.5);
+}
+
+.text-input-overlay {
+  display: none;
+  position: absolute;
+  z-index: 20;
+}
+.text-input-overlay textarea {
+  background: rgba(255,255,255,0.95);
+  border: 2px solid #e94560;
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 16px;
+  resize: both;
+  min-width: 120px;
+  min-height: 30px;
+  outline: none;
+}
+.hint { color: #666; font-size: 11px; margin-top: 2px; }
+
+/* 右侧面板 */
+.sidebar {
+  width: 220px;
+  background: #16213e;
+  border-left: 1px solid #0f3460;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  flex-shrink: 0;
+}
+
+.panel {
+  padding: 12px 14px;
+  border-bottom: 1px solid #0f3460;
+}
+.panel-title {
+  color: #8899aa;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 10px;
+}
+
+.tool-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.btn {
+  background: #0f3460;
+  color: #c0c8d4;
+  border: 1px solid #1a4a8a;
+  padding: 8px 6px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.15s;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+.btn:hover { background: #1a4a8a; color: #fff; }
+.btn.active { background: #e94560; border-color: #e94560; color: #fff; }
+.btn svg { width: 18px; height: 18px; }
+.btn.wide { grid-column: 1 / -1; flex-direction: row; justify-content: center; gap: 6px; }
+
+.ctrl-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.ctrl-row:last-child { margin-bottom: 0; }
+.ctrl-row label {
+  color: #8899aa;
+  font-size: 12px;
+  min-width: 32px;
+  flex-shrink: 0;
+}
+
+input[type="color"] {
+  width: 36px; height: 30px;
+  border: 2px solid #1a4a8a;
+  border-radius: 6px;
+  cursor: pointer;
+  background: none;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+input[type="range"] { flex: 1; }
+
+.size-val { color: #e0e0e0; font-size: 12px; min-width: 22px; text-align: right; }
+
+.action-btns {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.action-btns .btn {
+  flex-direction: row;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px;
+}
+
+.shortcuts {
+  padding: 12px 14px;
+  margin-top: auto;
+}
+.shortcuts .panel-title { margin-bottom: 6px; }
+.shortcut-list {
+  color: #556677;
+  font-size: 10px;
+  line-height: 1.8;
+}
+.shortcut-list kbd {
+  background: #0f3460;
+  color: #88aacc;
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-family: inherit;
+  font-size: 10px;
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>胡氏清念宗祠重光庆典交通规划系统</h1>
+</div>
+
+<div class="main">
+  <!-- 左侧画布 -->
+  <div class="canvas-area" id="canvasWrap">
+    <canvas id="canvas"></canvas>
+    <div class="text-input-overlay" id="textOverlay">
+      <textarea id="textInput" rows="1" placeholder="输入文字，按 Enter 确认"></textarea>
+      <div class="hint">Enter 确认 · Esc 取消</div>
+    </div>
+  </div>
+
+  <!-- 右侧工具面板 -->
+  <div class="sidebar">
+    <div class="panel">
+      <div class="panel-title">工具</div>
+      <div class="tool-grid">
+        <button class="btn" id="btnMove" onclick="setTool('move')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 9l-3 3 3 3"/><path d="M9 5l3-3 3 3"/><path d="M15 19l-3 3-3-3"/><path d="M19 9l3 3-3 3"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="12" y1="2" x2="12" y2="22"/></svg>
+          移动
+        </button>
+        <button class="btn active" id="btnDraw" onclick="setTool('draw')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.586 7.586"/><circle cx="11" cy="11" r="2"/></svg>
+          画笔
+        </button>
+        <button class="btn" id="btnText" onclick="setTool('text')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7V4h16v3"/><path d="M9 20h6"/><path d="M12 4v16"/></svg>
+          文字
+        </button>
+        <button class="btn" id="btnArrow" onclick="setTool('arrow')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+          箭头
+        </button>
+        <button class="btn" id="btnRect" onclick="setTool('rect')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+          矩形
+        </button>
+        <button class="btn" id="btnCircle" onclick="setTool('circle')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/></svg>
+          圆形
+        </button>
+        <button class="btn wide" id="btnEraser" onclick="setTool('eraser')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 20H7L3 16l9-9 8 8-4 4z"/><path d="M6.5 13.5l5 5"/></svg>
+          橡皮擦
+        </button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">图片</div>
+      <div class="ctrl-row">
+        <label>亮度</label>
+        <input type="range" id="brightness" min="80" max="200" value="140">
+        <span class="size-val" id="brightnessVal">140</span>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">属性</div>
+      <div class="ctrl-row">
+        <label>颜色</label>
+        <input type="color" id="colorPicker" value="#ff0000">
+        <span class="size-val" id="colorHex">#ff0000</span>
+      </div>
+      <div class="ctrl-row" id="sizeGroup">
+        <label>粗细</label>
+        <input type="range" id="sizeRange" min="1" max="30" value="3">
+        <span class="size-val" id="sizeVal">3</span>
+      </div>
+      <div class="ctrl-row" id="fontGroup" style="display:none;">
+        <label>字号</label>
+        <input type="range" id="fontSize" min="12" max="120" value="24">
+        <span class="size-val" id="fontSizeVal">24</span>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">操作</div>
+      <div class="action-btns">
+        <button class="btn" onclick="undo()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+          撤销
+        </button>
+        <button class="btn" onclick="clearAll()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+          清空标注
+        </button>
+        <button class="btn" onclick="saveImage()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          保存图片
+        </button>
+      </div>
+    </div>
+
+    <div class="shortcuts">
+      <div class="panel-title">快捷键</div>
+      <div class="shortcut-list">
+        <kbd>V</kbd> 移动 &nbsp; <kbd>B</kbd> 画笔 &nbsp; <kbd>T</kbd> 文字<br>
+        <kbd>A</kbd> 箭头 &nbsp; <kbd>R</kbd> 矩形 &nbsp; <kbd>C</kbd> 圆形<br>
+        <kbd>E</kbd> 橡皮擦 &nbsp; <kbd>Del</kbd> 删除选中<br>
+        <kbd>Ctrl+Z</kbd> 撤销
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const wrap = document.getElementById('canvasWrap');
+const textOverlay = document.getElementById('textOverlay');
+const textInput = document.getElementById('textInput');
+
+let tool = 'draw';
+let drawing = false;
+const STORAGE_KEY = 'annotator_history';
+let history = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+
+function saveHistory() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(history));
+}
+let currentPath = null;
+let bgImage = null;
+let startX, startY;
+let selectedIdx = -1;
+let moving = false;
+let moveOffX = 0, moveOffY = 0;
+
+function loadImage() {
+  const img = new Image();
+  img.onload = () => {
+    bgImage = img;
+    const maxW = wrap.clientWidth - 40;
+    const maxH = wrap.clientHeight - 40;
+    let w = img.width, h = img.height;
+    if (w > maxW) { h *= maxW / w; w = maxW; }
+    if (h > maxH) { w *= maxH / h; h = maxH; }
+    canvas.width = Math.round(w);
+    canvas.height = Math.round(h);
+    redraw();
+  };
+  img.src = '全景.png';
+}
+
+function redraw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  if (bgImage) {
+    const b = document.getElementById('brightness').value;
+    ctx.filter = `brightness(${b}%)`;
+    ctx.drawImage(bgImage, 0, 0, canvas.width, canvas.height);
+    ctx.filter = 'none';
+  }
+  history.forEach((item, i) => {
+    drawItem(ctx, item);
+    if (i === selectedIdx) drawSelectionBox(ctx, item);
+  });
+}
+
+function drawSelectionBox(c, item) {
+  const bbox = getBBox(item);
+  if (!bbox) return;
+  const pad = 6;
+  c.save();
+  c.strokeStyle = '#00bfff';
+  c.lineWidth = 1.5;
+  c.setLineDash([5, 3]);
+  c.strokeRect(bbox.x - pad, bbox.y - pad, bbox.w + pad * 2, bbox.h + pad * 2);
+  const sz = 5;
+  c.fillStyle = '#00bfff';
+  c.setLineDash([]);
+  [[bbox.x - pad, bbox.y - pad], [bbox.x + bbox.w + pad - sz, bbox.y - pad],
+   [bbox.x - pad, bbox.y + bbox.h + pad - sz], [bbox.x + bbox.w + pad - sz, bbox.y + bbox.h + pad - sz]
+  ].forEach(([x, y]) => c.fillRect(x, y, sz, sz));
+  c.restore();
+}
+
+function getBBox(item) {
+  if (item.type === 'draw' || item.type === 'eraser') {
+    if (!item.points || item.points.length === 0) return null;
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    item.points.forEach(p => { minX = Math.min(minX, p.x); minY = Math.min(minY, p.y); maxX = Math.max(maxX, p.x); maxY = Math.max(maxY, p.y); });
+    return { x: minX, y: minY, w: maxX - minX, h: maxY - minY };
+  } else if (item.type === 'text') {
+    ctx.save();
+    ctx.font = `bold ${item.fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
+    const lines = item.text.split('\n');
+    let maxW = 0;
+    lines.forEach(l => { maxW = Math.max(maxW, ctx.measureText(l).width); });
+    ctx.restore();
+    return { x: item.x, y: item.y - item.fontSize, w: maxW, h: lines.length * item.fontSize * 1.3 };
+  } else if (item.type === 'arrow') {
+    return { x: Math.min(item.x1, item.x2), y: Math.min(item.y1, item.y2), w: Math.abs(item.x2 - item.x1), h: Math.abs(item.y2 - item.y1) };
+  } else if (item.type === 'rect' || item.type === 'circle') {
+    return { x: Math.min(item.x, item.x + item.w), y: Math.min(item.y, item.y + item.h), w: Math.abs(item.w), h: Math.abs(item.h) };
+  }
+  return null;
+}
+
+function hitTest(pos) {
+  for (let i = history.length - 1; i >= 0; i--) {
+    const bbox = getBBox(history[i]);
+    if (!bbox) continue;
+    const pad = 10;
+    if (pos.x >= bbox.x - pad && pos.x <= bbox.x + bbox.w + pad &&
+        pos.y >= bbox.y - pad && pos.y <= bbox.y + bbox.h + pad) return i;
+  }
+  return -1;
+}
+
+function drawItem(c, item) {
+  c.save();
+  if (item.type === 'draw' || item.type === 'eraser') {
+    if (item.type === 'eraser') { c.globalCompositeOperation = 'destination-out'; }
+    // 先画白色描边底层让笔迹更醒目
+    if (item.type === 'draw' && item.points.length > 0) {
+      c.beginPath();
+      c.strokeStyle = 'rgba(255,255,255,0.5)';
+      c.lineWidth = item.size + 3;
+      c.lineCap = 'round'; c.lineJoin = 'round';
+      c.moveTo(item.points[0].x, item.points[0].y);
+      for (let i = 1; i < item.points.length; i++) c.lineTo(item.points[i].x, item.points[i].y);
+      c.stroke();
+    }
+    c.beginPath();
+    c.strokeStyle = item.type === 'eraser' ? 'rgba(0,0,0,1)' : item.color;
+    c.lineWidth = item.size;
+    c.lineCap = 'round'; c.lineJoin = 'round';
+    if (item.points.length > 0) {
+      c.moveTo(item.points[0].x, item.points[0].y);
+      for (let i = 1; i < item.points.length; i++) c.lineTo(item.points[i].x, item.points[i].y);
+      c.stroke();
+    }
+  } else if (item.type === 'text') {
+    c.font = `bold ${item.fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
+    // 白色描边让文字更醒目
+    c.strokeStyle = '#fff';
+    c.lineWidth = Math.max(item.fontSize / 8, 2);
+    c.lineJoin = 'round';
+    item.text.split('\n').forEach((line, i) => c.strokeText(line, item.x, item.y + i * item.fontSize * 1.3));
+    c.fillStyle = item.color;
+    item.text.split('\n').forEach((line, i) => c.fillText(line, item.x, item.y + i * item.fontSize * 1.3));
+  } else if (item.type === 'arrow') {
+    // 白色底层
+    drawArrow(c, item.x1, item.y1, item.x2, item.y2, 'rgba(255,255,255,0.5)', item.size + 3);
+    drawArrow(c, item.x1, item.y1, item.x2, item.y2, item.color, item.size);
+  } else if (item.type === 'rect') {
+    c.strokeStyle = 'rgba(255,255,255,0.5)'; c.lineWidth = item.size + 3; c.setLineDash([]); c.strokeRect(item.x, item.y, item.w, item.h);
+    c.strokeStyle = item.color; c.lineWidth = item.size; c.strokeRect(item.x, item.y, item.w, item.h);
+  } else if (item.type === 'circle') {
+    c.strokeStyle = 'rgba(255,255,255,0.5)'; c.lineWidth = item.size + 3; c.beginPath();
+    c.ellipse(item.x + item.w / 2, item.y + item.h / 2, Math.abs(item.w) / 2, Math.abs(item.h) / 2, 0, 0, Math.PI * 2);
+    c.stroke();
+    c.strokeStyle = item.color; c.lineWidth = item.size; c.beginPath();
+    c.ellipse(item.x + item.w / 2, item.y + item.h / 2, Math.abs(item.w) / 2, Math.abs(item.h) / 2, 0, 0, Math.PI * 2);
+    c.stroke();
+  }
+  c.restore();
+}
+
+function drawArrow(c, x1, y1, x2, y2, color, size) {
+  const headLen = Math.max(size * 5, 15);
+  const angle = Math.atan2(y2 - y1, x2 - x1);
+  c.strokeStyle = color; c.fillStyle = color; c.lineWidth = size; c.lineCap = 'round';
+  c.beginPath(); c.moveTo(x1, y1); c.lineTo(x2, y2); c.stroke();
+  c.beginPath(); c.moveTo(x2, y2);
+  c.lineTo(x2 - headLen * Math.cos(angle - Math.PI / 6), y2 - headLen * Math.sin(angle - Math.PI / 6));
+  c.lineTo(x2 - headLen * Math.cos(angle + Math.PI / 6), y2 - headLen * Math.sin(angle + Math.PI / 6));
+  c.closePath(); c.fill();
+}
+
+function moveItem(item, dx, dy) {
+  if (item.type === 'draw' || item.type === 'eraser') item.points.forEach(p => { p.x += dx; p.y += dy; });
+  else if (item.type === 'text') { item.x += dx; item.y += dy; }
+  else if (item.type === 'arrow') { item.x1 += dx; item.y1 += dy; item.x2 += dx; item.y2 += dy; }
+  else if (item.type === 'rect' || item.type === 'circle') { item.x += dx; item.y += dy; }
+}
+
+function setTool(t) {
+  tool = t;
+  selectedIdx = -1;
+  redraw();
+  document.querySelectorAll('.btn').forEach(b => b.classList.remove('active'));
+  const btn = document.getElementById('btn' + t.charAt(0).toUpperCase() + t.slice(1));
+  if (btn) btn.classList.add('active');
+  document.getElementById('fontGroup').style.display = t === 'text' ? 'flex' : 'none';
+  document.getElementById('sizeGroup').style.display = t === 'text' ? 'none' : 'flex';
+  canvas.style.cursor = t === 'text' ? 'text' : t === 'move' ? 'default' : t === 'eraser' ? 'cell' : 'crosshair';
+  hideTextInput();
+}
+
+document.getElementById('sizeRange').oninput = function() { document.getElementById('sizeVal').textContent = this.value; };
+document.getElementById('fontSize').oninput = function() { document.getElementById('fontSizeVal').textContent = this.value; };
+document.getElementById('colorPicker').oninput = function() { document.getElementById('colorHex').textContent = this.value; };
+document.getElementById('brightness').oninput = function() { document.getElementById('brightnessVal').textContent = this.value; redraw(); };
+
+function getPos(e) {
+  const rect = canvas.getBoundingClientRect();
+  const touch = e.touches ? e.touches[0] : e;
+  return { x: touch.clientX - rect.left, y: touch.clientY - rect.top };
+}
+
+canvas.addEventListener('mousedown', onDown);
+canvas.addEventListener('mousemove', onMove);
+canvas.addEventListener('mouseup', onUp);
+canvas.addEventListener('touchstart', e => { e.preventDefault(); onDown(e); });
+canvas.addEventListener('touchmove', e => { e.preventDefault(); onMove(e); });
+canvas.addEventListener('touchend', e => { e.preventDefault(); onUp(e); });
+
+function onDown(e) {
+  const pos = getPos(e);
+  if (tool === 'move') {
+    const hit = hitTest(pos);
+    if (hit >= 0) {
+      selectedIdx = hit; moving = true;
+      const bbox = getBBox(history[hit]);
+      moveOffX = pos.x - bbox.x; moveOffY = pos.y - bbox.y;
+      canvas.style.cursor = 'grabbing';
+    } else { selectedIdx = -1; }
+    redraw();
+    return;
+  }
+  if (tool === 'text') { showTextInput(pos.x, pos.y); return; }
+  drawing = true; startX = pos.x; startY = pos.y;
+  if (tool === 'draw' || tool === 'eraser') {
+    currentPath = { type: tool, color: document.getElementById('colorPicker').value, size: parseInt(document.getElementById('sizeRange').value), points: [pos] };
+  }
+}
+
+function onMove(e) {
+  const pos = getPos(e);
+  if (tool === 'move' && moving && selectedIdx >= 0) {
+    const bbox = getBBox(history[selectedIdx]);
+    moveItem(history[selectedIdx], (pos.x - moveOffX) - bbox.x, (pos.y - moveOffY) - bbox.y);
+    redraw(); return;
+  }
+  if (tool === 'move' && !moving) { canvas.style.cursor = hitTest(pos) >= 0 ? 'grab' : 'default'; return; }
+  if (!drawing) return;
+  if (tool === 'draw' || tool === 'eraser') {
+    currentPath.points.push(pos); redraw(); drawItem(ctx, currentPath);
+  } else if (tool === 'arrow' || tool === 'rect' || tool === 'circle') {
+    redraw();
+    drawItem(ctx, { type: tool, color: document.getElementById('colorPicker').value, size: parseInt(document.getElementById('sizeRange').value),
+      x1: startX, y1: startY, x2: pos.x, y2: pos.y, x: Math.min(startX, pos.x), y: Math.min(startY, pos.y), w: pos.x - startX, h: pos.y - startY });
+  }
+}
+
+function onUp(e) {
+  if (tool === 'move') { if (moving) { moving = false; canvas.style.cursor = selectedIdx >= 0 ? 'grab' : 'default'; saveHistory(); } return; }
+  if (!drawing) return;
+  drawing = false;
+  const pos = e.type === 'touchend' ? { x: startX, y: startY } : getPos(e);
+  const color = document.getElementById('colorPicker').value;
+  const size = parseInt(document.getElementById('sizeRange').value);
+  if (tool === 'draw' || tool === 'eraser') {
+    if (currentPath && currentPath.points.length > 0) history.push(currentPath);
+    currentPath = null;
+  } else if (tool === 'arrow') {
+    history.push({ type: 'arrow', color, size, x1: startX, y1: startY, x2: pos.x, y2: pos.y });
+  } else if (tool === 'rect') {
+    history.push({ type: 'rect', color, size, x: Math.min(startX, pos.x), y: Math.min(startY, pos.y), w: pos.x - startX, h: pos.y - startY });
+  } else if (tool === 'circle') {
+    history.push({ type: 'circle', color, size, x: Math.min(startX, pos.x), y: Math.min(startY, pos.y), w: pos.x - startX, h: pos.y - startY });
+  }
+  saveHistory();
+  redraw();
+}
+
+function showTextInput(x, y) {
+  const rect = canvas.getBoundingClientRect();
+  textOverlay.style.display = 'block';
+  textOverlay.style.left = (rect.left + x) + 'px';
+  textOverlay.style.top = (rect.top + y) + 'px';
+  textInput.value = '';
+  textInput.dataset.cx = x; textInput.dataset.cy = y;
+  textInput.focus();
+}
+
+function hideTextInput() { textOverlay.style.display = 'none'; textInput.value = ''; }
+
+textInput.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    const text = textInput.value.trim();
+    if (text) {
+      history.push({ type: 'text', text, x: parseFloat(textInput.dataset.cx), y: parseFloat(textInput.dataset.cy) + parseInt(document.getElementById('fontSize').value),
+        color: document.getElementById('colorPicker').value, fontSize: parseInt(document.getElementById('fontSize').value) });
+      saveHistory();
+      redraw();
+    }
+    hideTextInput();
+  } else if (e.key === 'Escape') hideTextInput();
+});
+
+function undo() { history.pop(); saveHistory(); redraw(); }
+function clearAll() { if (history.length === 0) return; if (confirm('确定清空所有标注吗？')) { history = []; saveHistory(); redraw(); } }
+
+function saveImage() {
+  const saveC = document.createElement('canvas');
+  saveC.width = bgImage ? bgImage.width : canvas.width;
+  saveC.height = bgImage ? bgImage.height : canvas.height;
+  const saveCtx = saveC.getContext('2d');
+  const scale = bgImage ? bgImage.width / canvas.width : 1;
+  if (bgImage) saveCtx.drawImage(bgImage, 0, 0);
+  history.forEach(item => {
+    const s = JSON.parse(JSON.stringify(item));
+    if (s.points) s.points = s.points.map(p => ({ x: p.x * scale, y: p.y * scale }));
+    if (s.x !== undefined) { s.x *= scale; s.y *= scale; s.w *= scale; s.h *= scale; }
+    if (s.x1 !== undefined) { s.x1 *= scale; s.y1 *= scale; s.x2 *= scale; s.y2 *= scale; }
+    if (s.fontSize) s.fontSize = Math.round(s.fontSize * scale);
+    if (s.size) s.size *= scale;
+    drawItem(saveCtx, s);
+  });
+  const link = document.createElement('a');
+  link.download = '交通规划_' + new Date().toISOString().slice(0,10) + '.png';
+  link.href = saveC.toDataURL('image/png');
+  link.click();
+}
+
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'TEXTAREA') return;
+  if (e.ctrlKey && e.key === 'z') { e.preventDefault(); undo(); }
+  if (e.key === 'v' || e.key === 'V') setTool('move');
+  if (e.key === 'b' || e.key === 'B') setTool('draw');
+  if (e.key === 't' || e.key === 'T') setTool('text');
+  if (e.key === 'a' || e.key === 'A') setTool('arrow');
+  if (e.key === 'r' || e.key === 'R') setTool('rect');
+  if (e.key === 'e' || e.key === 'E') setTool('eraser');
+  if (e.key === 'c' || e.key === 'C') setTool('circle');
+  if ((e.key === 'Delete' || e.key === 'Backspace') && selectedIdx >= 0 && tool === 'move') {
+    history.splice(selectedIdx, 1); selectedIdx = -1; saveHistory(); redraw();
+  }
+});
+
+loadImage();
+</script>
+</body>
+</html>

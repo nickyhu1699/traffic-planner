@@ -1,0 +1,904 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>胡氏清念宗祠重光庆典交通规划系统</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #1a1a2e; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; overflow: hidden; height: 100vh; display: flex; flex-direction: column; }
+
+.header {
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  padding: 8px 20px;
+  display: flex; align-items: center; justify-content: center;
+  border-bottom: 2px solid #e94560;
+  flex-shrink: 0;
+  position: relative;
+}
+.header h1 {
+  color: #f0e6d3; font-size: 18px; font-weight: 600; letter-spacing: 4px;
+  text-shadow: 0 0 10px rgba(233,69,96,0.3);
+  flex: 1; text-align: center;
+}
+.header-info {
+  color: #8899aa; font-size: 11px;
+  position: absolute; right: 20px;
+}
+
+.main { flex: 1; display: flex; overflow: hidden; }
+
+.canvas-area {
+  flex: 1; display: flex; align-items: center; justify-content: center;
+  overflow: auto; position: relative; background: #111;
+}
+canvas { cursor: crosshair; box-shadow: 0 0 30px rgba(0,0,0,0.5); }
+
+.text-input-overlay { display: none; position: absolute; z-index: 20; }
+.text-input-overlay input, .text-input-overlay textarea {
+  background: rgba(255,255,255,0.95); border: 2px solid #e94560; border-radius: 4px;
+  padding: 4px 8px; font-size: 14px; outline: none; min-width: 100px;
+}
+.hint { color: #666; font-size: 11px; margin-top: 2px; }
+
+/* 右侧面板 */
+.sidebar {
+  width: 240px; background: #16213e; border-left: 1px solid #0f3460;
+  display: flex; flex-direction: column; overflow-y: auto; flex-shrink: 0;
+}
+.panel { padding: 10px 12px; border-bottom: 1px solid #0f3460; }
+.panel-title {
+  color: #8899aa; font-size: 11px; font-weight: 600;
+  letter-spacing: 1px; margin-bottom: 8px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.panel-title .badge {
+  background: #e94560; color: #fff; font-size: 10px; padding: 1px 6px;
+  border-radius: 8px; letter-spacing: 0;
+}
+
+.tool-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 4px; }
+
+.btn {
+  background: #0f3460; color: #c0c8d4; border: 1px solid #1a4a8a;
+  padding: 6px 4px; border-radius: 6px; cursor: pointer; font-size: 11px;
+  transition: all 0.15s; display: flex; flex-direction: column;
+  align-items: center; gap: 2px; white-space: nowrap;
+}
+.btn:hover { background: #1a4a8a; color: #fff; }
+.btn.active { background: #e94560; border-color: #e94560; color: #fff; }
+.btn svg { width: 16px; height: 16px; }
+.btn.wide { grid-column: 1 / -1; flex-direction: row; justify-content: center; gap: 6px; }
+
+.ctrl-row { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
+.ctrl-row:last-child { margin-bottom: 0; }
+.ctrl-row label { color: #8899aa; font-size: 11px; min-width: 28px; flex-shrink: 0; }
+input[type="color"] { width: 30px; height: 26px; border: 2px solid #1a4a8a; border-radius: 4px; cursor: pointer; background: none; padding: 0; flex-shrink: 0; }
+input[type="range"] { flex: 1; }
+.size-val { color: #e0e0e0; font-size: 11px; min-width: 20px; text-align: right; }
+
+.action-btns { display: flex; flex-direction: column; gap: 4px; }
+.action-btns .btn { flex-direction: row; justify-content: center; gap: 6px; padding: 8px; }
+
+/* 停车场统计 */
+.stats-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 8px;
+}
+.stat-card {
+  background: #0f3460; border-radius: 6px; padding: 8px; text-align: center;
+}
+.stat-card .stat-num { font-size: 22px; font-weight: 700; color: #f0e6d3; }
+.stat-card .stat-num.ok { color: #4caf50; }
+.stat-card .stat-num.warn { color: #ff9800; }
+.stat-card .stat-num.danger { color: #f44336; }
+.stat-card .stat-label { font-size: 10px; color: #8899aa; margin-top: 2px; }
+
+.progress-bar {
+  height: 6px; background: #0f3460; border-radius: 3px; overflow: hidden; margin-top: 4px;
+}
+.progress-bar .fill { height: 100%; border-radius: 3px; transition: width 0.3s; }
+
+/* 停车场列表 */
+.lot-list { max-height: 200px; overflow-y: auto; }
+.lot-item {
+  display: flex; align-items: center; gap: 6px;
+  padding: 5px 6px; border-radius: 4px; margin-bottom: 3px;
+  background: rgba(15,52,96,0.5); font-size: 11px; color: #c0c8d4;
+}
+.lot-item .lot-color { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+.lot-item .lot-name { flex: 1; }
+.lot-item .lot-cap { font-weight: 600; }
+.lot-item .lot-cap.full { color: #f44336; }
+.lot-item .lot-cap.ok { color: #4caf50; }
+.lot-item .lot-del {
+  color: #556; cursor: pointer; padding: 0 4px; font-size: 14px; line-height: 1;
+}
+.lot-item .lot-del:hover { color: #f44336; }
+.lot-btn {
+  background: #0f3460; color: #88aacc; border: 1px solid #1a4a8a;
+  width: 18px; height: 18px; border-radius: 3px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: bold; line-height: 1; user-select: none;
+}
+.lot-btn:hover { background: #1a4a8a; color: #fff; }
+.lot-empty { color: #556; font-size: 11px; text-align: center; padding: 10px; }
+
+.shortcuts { padding: 10px 12px; margin-top: auto; border-top: 1px solid #0f3460; }
+.shortcut-list { color: #556677; font-size: 10px; line-height: 1.9; }
+.shortcut-list kbd { background: #0f3460; color: #88aacc; padding: 1px 4px; border-radius: 3px; font-family: inherit; font-size: 10px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>胡氏清念宗祠重光庆典交通规划系统</h1>
+  <span class="header-info">预计宾客 1000+ · 车辆 150+ 台</span>
+</div>
+
+<div class="main">
+  <div class="canvas-area" id="canvasWrap">
+    <canvas id="canvas"></canvas>
+    <div class="text-input-overlay" id="textOverlay">
+      <div id="parkingInput" style="display:none;">
+        <input type="text" id="parkingName" placeholder="停车场名称，如：A区" style="margin-bottom:4px;">
+        <input type="number" id="parkingCap" placeholder="车位数量，如：30" min="1">
+        <div class="hint">Enter 确认 · Esc 取消</div>
+      </div>
+      <div id="textInputWrap" style="display:none;">
+        <textarea id="textInput" rows="1" placeholder="输入文字，按 Enter 确认"></textarea>
+        <div class="hint">Enter 确认 · Esc 取消</div>
+      </div>
+      <div id="guardInput" style="display:none;">
+        <input type="text" id="guardName" placeholder="指挥员姓名，如：胡大明">
+        <div class="hint">Enter 确认 · Esc 取消</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sidebar">
+    <!-- 工具 -->
+    <div class="panel">
+      <div class="panel-title">工具</div>
+      <div class="tool-grid">
+        <button class="btn" id="btnMove" onclick="setTool('move')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 9l-3 3 3 3"/><path d="M9 5l3-3 3 3"/><path d="M15 19l-3 3-3-3"/><path d="M19 9l3 3-3 3"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="12" y1="2" x2="12" y2="22"/></svg>
+          移动
+        </button>
+        <button class="btn active" id="btnDraw" onclick="setTool('draw')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/></svg>
+          画笔
+        </button>
+        <button class="btn" id="btnText" onclick="setTool('text')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7V4h16v3"/><path d="M9 20h6"/><path d="M12 4v16"/></svg>
+          文字
+        </button>
+        <button class="btn" id="btnArrow" onclick="setTool('arrow')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+          箭头
+        </button>
+        <button class="btn" id="btnRect" onclick="setTool('rect')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+          矩形
+        </button>
+        <button class="btn" id="btnCircle" onclick="setTool('circle')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/></svg>
+          圆形
+        </button>
+        <button class="btn" id="btnParking" onclick="setTool('parking')" style="color:#4caf50;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><text x="12" y="17" text-anchor="middle" font-size="12" fill="currentColor" stroke="none" font-weight="bold">P</text></svg>
+          停车场
+        </button>
+        <button class="btn" id="btnTraffic" onclick="setTool('traffic')" style="color:#ff9800;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="14 7 19 12 14 17"/></svg>
+          导流线
+        </button>
+        <button class="btn" id="btnGuard" onclick="setTool('guard')" style="color:#00bcd4;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="5" r="3"/><path d="M12 8v5"/><path d="M9 11l3 2 3-2"/><path d="M10 21l2-8 2 8"/></svg>
+          指挥员
+        </button>
+        <button class="btn" id="btnEraser" onclick="setTool('eraser')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 20H7L3 16l9-9 8 8-4 4z"/></svg>
+          橡皮擦
+        </button>
+      </div>
+    </div>
+
+    <!-- 图片 -->
+    <div class="panel">
+      <div class="panel-title">图片</div>
+      <div class="ctrl-row">
+        <label>亮度</label>
+        <input type="range" id="brightness" min="80" max="200" value="140">
+        <span class="size-val" id="brightnessVal">140</span>
+      </div>
+    </div>
+
+    <!-- 属性 -->
+    <div class="panel">
+      <div class="panel-title">属性</div>
+      <div class="ctrl-row">
+        <label>颜色</label>
+        <input type="color" id="colorPicker" value="#ff0000">
+        <span class="size-val" id="colorHex">#ff0000</span>
+      </div>
+      <div class="ctrl-row" id="sizeGroup">
+        <label>粗细</label>
+        <input type="range" id="sizeRange" min="1" max="30" value="3">
+        <span class="size-val" id="sizeVal">3</span>
+      </div>
+      <div class="ctrl-row" id="fontGroup" style="display:none;">
+        <label>字号</label>
+        <input type="range" id="fontSize" min="12" max="120" value="24">
+        <span class="size-val" id="fontSizeVal">24</span>
+      </div>
+    </div>
+
+    <!-- 停车场统计 -->
+    <div class="panel" id="statsPanel">
+      <div class="panel-title">停车场统计 <span class="badge" id="statsBadge">0/150</span></div>
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-num" id="totalSlots">0</div>
+          <div class="stat-label">总车位</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-num" id="totalLots">0</div>
+          <div class="stat-label">停车场数</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-num" id="totalParked" style="color:#ff9800;">0</div>
+          <div class="stat-label">已停车辆</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-num" id="totalFree" style="color:#4caf50;">0</div>
+          <div class="stat-label">剩余车位</div>
+        </div>
+      </div>
+      <div class="progress-bar">
+        <div class="fill" id="progressFill" style="width:0%; background:#e94560;"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-top:3px;">
+        <span style="color:#556;font-size:10px;">目标 150 台</span>
+        <span style="font-size:10px;" id="progressText">0%</span>
+      </div>
+    </div>
+
+    <!-- 停车场列表 -->
+    <div class="panel">
+      <div class="panel-title">停车场列表</div>
+      <div class="lot-list" id="lotList">
+        <div class="lot-empty">暂无停车场，使用停车场工具添加</div>
+      </div>
+    </div>
+
+    <!-- 操作 -->
+    <div class="panel">
+      <div class="panel-title">操作</div>
+      <div class="action-btns">
+        <button class="btn" onclick="undo()">撤销</button>
+        <button class="btn" onclick="clearAll()">清空标注</button>
+        <button class="btn" onclick="saveImage()">保存图片</button>
+      </div>
+    </div>
+
+    <div class="shortcuts">
+      <div class="shortcut-list">
+        <kbd>V</kbd>移动 <kbd>B</kbd>画笔 <kbd>T</kbd>文字 <kbd>P</kbd>停车场<br>
+        <kbd>A</kbd>箭头 <kbd>F</kbd>导流 <kbd>G</kbd>指挥员 <kbd>E</kbd>橡皮<br>
+        <kbd>Del</kbd>删除选中 <kbd>Ctrl+Z</kbd>撤销
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const wrap = document.getElementById('canvasWrap');
+const textOverlay = document.getElementById('textOverlay');
+const textInput = document.getElementById('textInput');
+const parkingNameInput = document.getElementById('parkingName');
+const parkingCapInput = document.getElementById('parkingCap');
+
+let tool = 'draw';
+let drawing = false;
+const STORAGE_KEY = 'traffic_planner_v2';
+let history = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+function saveHistory() { localStorage.setItem(STORAGE_KEY, JSON.stringify(history)); updateStats(); }
+let currentPath = null;
+let bgImage = null;
+let startX, startY;
+let selectedIdx = -1;
+let moving = false;
+let moveOffX = 0, moveOffY = 0;
+
+// 停车场颜色循环
+const LOT_COLORS = ['#4caf50','#2196f3','#ff9800','#9c27b0','#00bcd4','#e91e63','#8bc34a','#ff5722'];
+let lotCounter = 0;
+
+function loadImage() {
+  const img = new Image();
+  img.onload = () => {
+    bgImage = img;
+    const maxW = wrap.clientWidth - 40, maxH = wrap.clientHeight - 40;
+    let w = img.width, h = img.height;
+    if (w > maxW) { h *= maxW / w; w = maxW; }
+    if (h > maxH) { w *= maxH / h; h = maxH; }
+    canvas.width = Math.round(w); canvas.height = Math.round(h);
+    redraw();
+  };
+  img.src = 'map.png';
+}
+
+function redraw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  if (bgImage) {
+    ctx.filter = `brightness(${document.getElementById('brightness').value}%)`;
+    ctx.drawImage(bgImage, 0, 0, canvas.width, canvas.height);
+    ctx.filter = 'none';
+  }
+  history.forEach((item, i) => {
+    drawItem(ctx, item);
+    if (i === selectedIdx) drawSelectionBox(ctx, item);
+  });
+}
+
+function drawSelectionBox(c, item) {
+  const bbox = getBBox(item);
+  if (!bbox) return;
+  const pad = 6;
+  c.save();
+  c.strokeStyle = '#00bfff'; c.lineWidth = 1.5; c.setLineDash([5, 3]);
+  c.strokeRect(bbox.x - pad, bbox.y - pad, bbox.w + pad * 2, bbox.h + pad * 2);
+  c.fillStyle = '#00bfff'; c.setLineDash([]);
+  const sz = 5;
+  [[bbox.x-pad,bbox.y-pad],[bbox.x+bbox.w+pad-sz,bbox.y-pad],
+   [bbox.x-pad,bbox.y+bbox.h+pad-sz],[bbox.x+bbox.w+pad-sz,bbox.y+bbox.h+pad-sz]
+  ].forEach(([x,y]) => c.fillRect(x,y,sz,sz));
+  c.restore();
+}
+
+function getBBox(item) {
+  if (item.type === 'draw' || item.type === 'eraser') {
+    if (!item.points || !item.points.length) return null;
+    let x1=Infinity,y1=Infinity,x2=-Infinity,y2=-Infinity;
+    item.points.forEach(p => { x1=Math.min(x1,p.x); y1=Math.min(y1,p.y); x2=Math.max(x2,p.x); y2=Math.max(y2,p.y); });
+    return {x:x1,y:y1,w:x2-x1,h:y2-y1};
+  } else if (item.type === 'text') {
+    ctx.save();
+    ctx.font = `bold ${item.fontSize}px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif`;
+    const lines = item.text.split('\n');
+    let maxW = 0; lines.forEach(l => maxW = Math.max(maxW, ctx.measureText(l).width));
+    ctx.restore();
+    return {x:item.x, y:item.y-item.fontSize, w:maxW, h:lines.length*item.fontSize*1.3};
+  } else if (item.type === 'arrow' || item.type === 'traffic') {
+    return {x:Math.min(item.x1,item.x2), y:Math.min(item.y1,item.y2), w:Math.abs(item.x2-item.x1), h:Math.abs(item.y2-item.y1)};
+  } else if (item.type === 'parking') {
+    const x = Math.min(item.x, item.x+item.w), y = Math.min(item.y, item.y+item.h);
+    return {x, y, w:Math.abs(item.w), h:Math.abs(item.h)};
+  } else if (item.type === 'guard') {
+    const name = item.name || '指挥';
+    ctx.save();
+    ctx.font = 'bold 11px sans-serif';
+    const tw = ctx.measureText(name).width;
+    ctx.restore();
+    const hw = Math.max(14, tw/2 + 4);
+    return {x:item.x-hw, y:item.y-16, w:hw*2, h:38};
+  } else if (item.type === 'rect' || item.type === 'circle') {
+    return {x:Math.min(item.x,item.x+item.w), y:Math.min(item.y,item.y+item.h), w:Math.abs(item.w), h:Math.abs(item.h)};
+  }
+  return null;
+}
+
+function hitTest(pos) {
+  for (let i = history.length-1; i >= 0; i--) {
+    const b = getBBox(history[i]); if (!b) continue;
+    const pad = 10;
+    if (pos.x >= b.x-pad && pos.x <= b.x+b.w+pad && pos.y >= b.y-pad && pos.y <= b.y+b.h+pad) return i;
+  }
+  return -1;
+}
+
+function drawItem(c, item) {
+  c.save();
+  if (item.type === 'draw' || item.type === 'eraser') {
+    if (item.type === 'eraser') c.globalCompositeOperation = 'destination-out';
+    if (item.type === 'draw' && item.points.length > 0) {
+      c.beginPath(); c.strokeStyle = 'rgba(255,255,255,0.4)'; c.lineWidth = item.size+3;
+      c.lineCap='round'; c.lineJoin='round';
+      c.moveTo(item.points[0].x, item.points[0].y);
+      for (let i=1;i<item.points.length;i++) c.lineTo(item.points[i].x, item.points[i].y);
+      c.stroke();
+    }
+    c.beginPath(); c.strokeStyle = item.type==='eraser'?'rgba(0,0,0,1)':item.color;
+    c.lineWidth=item.size; c.lineCap='round'; c.lineJoin='round';
+    if (item.points.length>0) {
+      c.moveTo(item.points[0].x,item.points[0].y);
+      for(let i=1;i<item.points.length;i++) c.lineTo(item.points[i].x,item.points[i].y);
+      c.stroke();
+    }
+  } else if (item.type === 'text') {
+    c.font = `bold ${item.fontSize}px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif`;
+    c.strokeStyle='#fff'; c.lineWidth=Math.max(item.fontSize/8,2); c.lineJoin='round';
+    item.text.split('\n').forEach((l,i)=>c.strokeText(l,item.x,item.y+i*item.fontSize*1.3));
+    c.fillStyle=item.color;
+    item.text.split('\n').forEach((l,i)=>c.fillText(l,item.x,item.y+i*item.fontSize*1.3));
+  } else if (item.type === 'parking') {
+    drawParking(c, item);
+  } else if (item.type === 'traffic') {
+    drawTrafficArrow(c, item);
+  } else if (item.type === 'guard') {
+    drawGuard(c, item);
+  } else if (item.type === 'arrow') {
+    drawArrow(c, item.x1,item.y1,item.x2,item.y2,'rgba(255,255,255,0.4)',item.size+3);
+    drawArrow(c, item.x1,item.y1,item.x2,item.y2,item.color,item.size);
+  } else if (item.type === 'rect') {
+    c.strokeStyle='rgba(255,255,255,0.4)';c.lineWidth=item.size+3;c.strokeRect(item.x,item.y,item.w,item.h);
+    c.strokeStyle=item.color;c.lineWidth=item.size;c.strokeRect(item.x,item.y,item.w,item.h);
+  } else if (item.type === 'circle') {
+    c.strokeStyle='rgba(255,255,255,0.4)';c.lineWidth=item.size+3;c.beginPath();
+    c.ellipse(item.x+item.w/2,item.y+item.h/2,Math.abs(item.w)/2,Math.abs(item.h)/2,0,0,Math.PI*2);c.stroke();
+    c.strokeStyle=item.color;c.lineWidth=item.size;c.beginPath();
+    c.ellipse(item.x+item.w/2,item.y+item.h/2,Math.abs(item.w)/2,Math.abs(item.h)/2,0,0,Math.PI*2);c.stroke();
+  }
+  c.restore();
+}
+
+function drawParking(c, item) {
+  const x = Math.min(item.x, item.x+item.w), y = Math.min(item.y, item.y+item.h);
+  const w = Math.abs(item.w), h = Math.abs(item.h);
+  const current = item.current || 0;
+  const cap = item.cap || 0;
+  const pct = cap > 0 ? current / cap : 0;
+  // 根据使用率变色
+  let fillColor, borderColor;
+  if (pct >= 1) { fillColor = 'rgba(244,67,54,0.35)'; borderColor = '#f44336'; }
+  else if (pct >= 0.7) { fillColor = 'rgba(255,152,0,0.25)'; borderColor = '#ff9800'; }
+  else { fillColor = (item.color || '#4caf50') + '25'; borderColor = item.color || '#4caf50'; }
+  // 半透明填充
+  c.fillStyle = fillColor;
+  c.fillRect(x, y, w, h);
+  // 使用率进度条（底部）
+  if (cap > 0) {
+    const barH = Math.max(4, h * 0.06);
+    c.fillStyle = 'rgba(0,0,0,0.3)';
+    c.fillRect(x, y + h - barH, w, barH);
+    c.fillStyle = pct >= 1 ? '#f44336' : pct >= 0.7 ? '#ff9800' : '#4caf50';
+    c.fillRect(x, y + h - barH, w * Math.min(pct, 1), barH);
+  }
+  // 边框
+  c.strokeStyle = borderColor; c.lineWidth = pct >= 1 ? 3 : 2.5;
+  c.setLineDash(pct >= 1 ? [] : [8,4]);
+  c.strokeRect(x, y, w, h);
+  c.setLineDash([]);
+  // 满/空状态标签
+  if (pct >= 1) {
+    c.save();
+    c.font = 'bold 11px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
+    c.fillStyle = 'rgba(244,67,54,0.9)';
+    c.fillText('已满', x + w - 18, y + 12);
+    c.restore();
+  }
+  // 名称
+  const cx = x + w/2, cy = y + h/2;
+  const fs = Math.max(Math.min(w, h) * 0.22, 14);
+  c.font = `bold ${fs}px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif`;
+  c.textAlign = 'center'; c.textBaseline = 'middle';
+  c.strokeStyle = 'rgba(0,0,0,0.6)'; c.lineWidth = 3; c.lineJoin = 'round';
+  c.strokeText(item.name, cx, cy - fs*0.35);
+  c.fillStyle = '#fff';
+  c.fillText(item.name, cx, cy - fs*0.35);
+  // 已停/总数
+  c.font = `bold ${fs*0.75}px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif`;
+  const countText = current + ' / ' + cap + ' 台';
+  c.strokeText(countText, cx, cy + fs*0.4);
+  c.fillStyle = pct >= 1 ? '#f44336' : '#fff';
+  c.fillText(countText, cx, cy + fs*0.4);
+  // 剩余
+  if (cap > 0 && pct < 1) {
+    c.font = `bold ${fs*0.5}px sans-serif`;
+    const freeText = '剩余 ' + (cap - current) + ' 台';
+    c.strokeText(freeText, cx, cy + fs*0.95);
+    c.fillStyle = '#4caf50';
+    c.fillText(freeText, cx, cy + fs*0.95);
+  }
+  c.textAlign = 'start'; c.textBaseline = 'alphabetic';
+}
+
+function drawMiniCars(c, x, y, w, h, color) {
+  // 在停车场内画几个小方块代表车
+  const carW = Math.min(w/5, 14), carH = Math.min(h/5, 10);
+  const cols = Math.max(1, Math.floor(w / (carW*1.8)));
+  const rows = Math.max(1, Math.floor(h / (carH*2.5)));
+  const showCars = Math.min(cols * rows, 12); // 最多画12个
+  const gap_x = w / (cols + 1), gap_y = h / (rows + 1);
+  c.fillStyle = color + '80';
+  let count = 0;
+  for (let r = 1; r <= rows && count < showCars; r++) {
+    for (let col = 1; col <= cols && count < showCars; col++) {
+      c.fillRect(x + col*gap_x - carW/2, y + r*gap_y - carH/2, carW, carH);
+      count++;
+    }
+  }
+}
+
+function drawTrafficArrow(c, item) {
+  // 粗橙色导流箭头
+  const x1=item.x1,y1=item.y1,x2=item.x2,y2=item.y2;
+  // 白色底层
+  drawArrow(c, x1,y1,x2,y2,'rgba(255,255,255,0.5)', item.size+5);
+  // 橙色箭头
+  drawArrow(c, x1,y1,x2,y2,'#ff9800', item.size+2);
+  // 虚线装饰
+  const dist = Math.sqrt((x2-x1)**2 + (y2-y1)**2);
+  if (dist > 30) {
+    const angle = Math.atan2(y2-y1, x2-x1);
+    const midX = (x1+x2)/2, midY = (y1+y2)/2;
+    c.font = 'bold 12px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
+    c.strokeStyle = 'rgba(0,0,0,0.5)'; c.lineWidth = 2;
+    c.strokeText('→', midX, midY - 12);
+    c.fillStyle = '#fff';
+    c.fillText('→', midX, midY - 12);
+  }
+}
+
+function drawGuard(c, item) {
+  const x=item.x, y=item.y;
+  const name = item.name || '指挥';
+  // 底部光晕
+  c.beginPath();
+  c.arc(x, y, 14, 0, Math.PI*2);
+  c.fillStyle = 'rgba(0,188,212,0.2)';
+  c.fill();
+  c.strokeStyle = '#00bcd4'; c.lineWidth = 2;
+  c.stroke();
+  // 小人图标
+  c.beginPath(); c.arc(x, y-10, 4, 0, Math.PI*2);
+  c.fillStyle = '#00bcd4'; c.fill();
+  c.strokeStyle = '#fff'; c.lineWidth = 1.5;
+  c.stroke();
+  // 身体
+  c.beginPath(); c.moveTo(x, y-6); c.lineTo(x, y+3);
+  c.strokeStyle = '#00bcd4'; c.lineWidth = 2.5; c.stroke();
+  // 手臂 - 指挥姿态
+  c.beginPath(); c.moveTo(x-7, y-2); c.lineTo(x, y-4); c.lineTo(x+7, y-6);
+  c.stroke();
+  // 腿
+  c.beginPath(); c.moveTo(x, y+3); c.lineTo(x-5, y+10);
+  c.moveTo(x, y+3); c.lineTo(x+5, y+10);
+  c.stroke();
+  // 名字标签
+  c.font = 'bold 11px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
+  c.strokeStyle = 'rgba(0,0,0,0.7)'; c.lineWidth = 2;
+  c.strokeText(name, x, y+18);
+  c.fillStyle = '#00bcd4';
+  c.fillText(name, x, y+18);
+  c.textAlign = 'start'; c.textBaseline = 'alphabetic';
+}
+
+function drawArrow(c, x1,y1,x2,y2,color,size) {
+  const headLen = Math.max(size*4, 14);
+  const angle = Math.atan2(y2-y1, x2-x1);
+  c.strokeStyle=color; c.fillStyle=color; c.lineWidth=size; c.lineCap='round';
+  c.beginPath(); c.moveTo(x1,y1); c.lineTo(x2,y2); c.stroke();
+  c.beginPath(); c.moveTo(x2,y2);
+  c.lineTo(x2-headLen*Math.cos(angle-Math.PI/6), y2-headLen*Math.sin(angle-Math.PI/6));
+  c.lineTo(x2-headLen*Math.cos(angle+Math.PI/6), y2-headLen*Math.sin(angle+Math.PI/6));
+  c.closePath(); c.fill();
+}
+
+function moveItem(item, dx, dy) {
+  if (item.type==='draw'||item.type==='eraser') item.points.forEach(p=>{p.x+=dx;p.y+=dy;});
+  else if (item.type==='text') {item.x+=dx;item.y+=dy;}
+  else if (item.type==='arrow'||item.type==='traffic') {item.x1+=dx;item.y1+=dy;item.x2+=dx;item.y2+=dy;}
+  else if (item.type==='guard') {item.x+=dx;item.y+=dy;}
+  else if (item.type==='parking'||item.type==='rect'||item.type==='circle') {item.x+=dx;item.y+=dy;}
+}
+
+function setTool(t) {
+  tool = t; selectedIdx = -1; redraw();
+  document.querySelectorAll('.btn').forEach(b=>b.classList.remove('active'));
+  const btn = document.getElementById('btn'+t.charAt(0).toUpperCase()+t.slice(1));
+  if (btn) btn.classList.add('active');
+  document.getElementById('fontGroup').style.display = t==='text'?'flex':'none';
+  document.getElementById('sizeGroup').style.display = t==='text'?'none':'flex';
+  const cursors = {text:'text',move:'default',eraser:'cell'};
+  canvas.style.cursor = cursors[t] || 'crosshair';
+  hideAllInputs();
+}
+
+function hideAllInputs() {
+  textOverlay.style.display='none';
+  document.getElementById('parkingInput').style.display='none';
+  document.getElementById('textInputWrap').style.display='none';
+  document.getElementById('guardInput').style.display='none';
+}
+
+function showParkingInput(cx, cy, w, h) {
+  const rect = canvas.getBoundingClientRect();
+  textOverlay.style.display='block';
+  document.getElementById('parkingInput').style.display='block';
+  document.getElementById('textInputWrap').style.display='none';
+  textOverlay.style.left = (rect.left + cx) + 'px';
+  textOverlay.style.top = (rect.top + cy) + 'px';
+  lotCounter++;
+  parkingNameInput.value = String.fromCharCode(64+lotCounter) + '区';
+  parkingCapInput.value = '';
+  parkingNameInput.dataset.px = Math.min(cx, cx+w);
+  parkingNameInput.dataset.py = Math.min(cy, cy+h);
+  parkingNameInput.dataset.pw = Math.abs(w);
+  parkingNameInput.dataset.ph = Math.abs(h);
+  parkingNameInput.focus();
+}
+
+function confirmParking() {
+  const name = parkingNameInput.value.trim() || '停车场';
+  const cap = parseInt(parkingCapInput.value) || 0;
+  if (cap <= 0) { parkingCapInput.focus(); return; }
+  const color = LOT_COLORS[(history.filter(h=>h.type==='parking').length) % LOT_COLORS.length];
+  history.push({
+    type:'parking', name, cap, color,
+    x: parseFloat(parkingNameInput.dataset.px),
+    y: parseFloat(parkingNameInput.dataset.py),
+    w: parseFloat(parkingNameInput.dataset.pw),
+    h: parseFloat(parkingNameInput.dataset.ph)
+  });
+  saveHistory(); redraw(); hideAllInputs();
+}
+
+function showGuardInput(cx, cy) {
+  const rect = canvas.getBoundingClientRect();
+  textOverlay.style.display='block';
+  document.getElementById('guardInput').style.display='block';
+  document.getElementById('parkingInput').style.display='none';
+  document.getElementById('textInputWrap').style.display='none';
+  textOverlay.style.left = (rect.left + cx) + 'px';
+  textOverlay.style.top = (rect.top + cy) + 'px';
+  const guardNameInput = document.getElementById('guardName');
+  guardNameInput.dataset.gx = cx;
+  guardNameInput.dataset.gy = cy;
+  guardNameInput.value = '';
+  guardNameInput.focus();
+}
+
+function confirmGuard() {
+  const guardNameInput = document.getElementById('guardName');
+  const name = guardNameInput.value.trim();
+  if (!name) { guardNameInput.focus(); return; }
+  history.push({type:'guard', name, x:parseFloat(guardNameInput.dataset.gx), y:parseFloat(guardNameInput.dataset.gy)});
+  saveHistory(); redraw(); hideAllInputs();
+}
+
+document.getElementById('guardName').addEventListener('keydown', e => {
+  if (e.key==='Enter') { e.preventDefault(); confirmGuard(); }
+  else if (e.key==='Escape') hideAllInputs();
+});
+
+[parkingNameInput, parkingCapInput].forEach(inp => {
+  inp.addEventListener('keydown', e => {
+    if (e.key==='Enter') { e.preventDefault(); confirmParking(); }
+    else if (e.key==='Escape') hideAllInputs();
+  });
+});
+
+document.getElementById('sizeRange').oninput = function(){document.getElementById('sizeVal').textContent=this.value;};
+document.getElementById('fontSize').oninput = function(){document.getElementById('fontSizeVal').textContent=this.value;};
+document.getElementById('colorPicker').oninput = function(){document.getElementById('colorHex').textContent=this.value;};
+document.getElementById('brightness').oninput = function(){document.getElementById('brightnessVal').textContent=this.value;redraw();};
+
+function getPos(e) {
+  const rect=canvas.getBoundingClientRect();
+  const t=e.touches?e.touches[0]:e;
+  return {x:t.clientX-rect.left, y:t.clientY-rect.top};
+}
+
+canvas.addEventListener('mousedown', onDown);
+canvas.addEventListener('mousemove', onMove);
+canvas.addEventListener('mouseup', onUp);
+canvas.addEventListener('touchstart', e=>{e.preventDefault();onDown(e);});
+canvas.addEventListener('touchmove', e=>{e.preventDefault();onMove(e);});
+canvas.addEventListener('touchend', e=>{e.preventDefault();onUp(e);});
+
+function onDown(e) {
+  const pos=getPos(e);
+  if (tool==='move') {
+    const hit=hitTest(pos);
+    if(hit>=0){selectedIdx=hit;moving=true;const b=getBBox(history[hit]);moveOffX=pos.x-b.x;moveOffY=pos.y-b.y;canvas.style.cursor='grabbing';}
+    else selectedIdx=-1;
+    redraw(); return;
+  }
+  if(tool==='text'){showTextAt(pos.x,pos.y);return;}
+  if(tool==='guard'){showGuardInput(pos.x,pos.y);return;}
+  drawing=true; startX=pos.x; startY=pos.y;
+  if(tool==='draw'||tool==='eraser'){
+    currentPath={type:tool,color:document.getElementById('colorPicker').value,size:parseInt(document.getElementById('sizeRange').value),points:[pos]};
+  }
+}
+
+function onMove(e) {
+  const pos=getPos(e);
+  if(tool==='move'&&moving&&selectedIdx>=0){
+    const b=getBBox(history[selectedIdx]);
+    moveItem(history[selectedIdx],(pos.x-moveOffX)-b.x,(pos.y-moveOffY)-b.y);
+    redraw();return;
+  }
+  if(tool==='move'&&!moving){canvas.style.cursor=hitTest(pos)>=0?'grab':'default';return;}
+  if(!drawing)return;
+  if(tool==='draw'||tool==='eraser'){
+    currentPath.points.push(pos);redraw();drawItem(ctx,currentPath);
+  } else if(tool==='arrow'||tool==='rect'||tool==='circle'){
+    redraw();
+    drawItem(ctx,{type:tool,color:document.getElementById('colorPicker').value,size:parseInt(document.getElementById('sizeRange').value),
+      x1:startX,y1:startY,x2:pos.x,y2:pos.y,x:Math.min(startX,pos.x),y:Math.min(startY,pos.y),w:pos.x-startX,h:pos.y-startY});
+  } else if(tool==='parking'){
+    redraw();
+    // 预览停车场
+    ctx.save();
+    const px=Math.min(startX,pos.x),py=Math.min(startY,pos.y),pw=Math.abs(pos.x-startX),ph=Math.abs(pos.y-startY);
+    ctx.fillStyle='rgba(76,175,80,0.15)'; ctx.fillRect(px,py,pw,ph);
+    ctx.strokeStyle='#4caf50'; ctx.lineWidth=2.5; ctx.setLineDash([8,4]); ctx.strokeRect(px,py,pw,ph); ctx.setLineDash([]);
+    ctx.font='bold 14px sans-serif'; ctx.fillStyle='#4caf50'; ctx.textAlign='center';
+    ctx.fillText('松开鼠标设置停车场',px+pw/2,py+ph/2);
+    ctx.textAlign='start';
+    ctx.restore();
+  } else if(tool==='traffic'){
+    redraw();
+    drawTrafficArrow(ctx,{x1:startX,y1:startY,x2:pos.x,y2:pos.y,size:parseInt(document.getElementById('sizeRange').value)});
+  }
+}
+
+function onUp(e) {
+  if(tool==='move'){if(moving){moving=false;canvas.style.cursor=selectedIdx>=0?'grab':'default';saveHistory();}return;}
+  if(!drawing)return;
+  drawing=false;
+  const pos=e.type==='touchend'?{x:startX,y:startY}:getPos(e);
+  const color=document.getElementById('colorPicker').value;
+  const size=parseInt(document.getElementById('sizeRange').value);
+  if(tool==='draw'||tool==='eraser'){
+    if(currentPath&&currentPath.points.length>0)history.push(currentPath);
+    currentPath=null;
+  } else if(tool==='arrow'){
+    history.push({type:'arrow',color,size,x1:startX,y1:startY,x2:pos.x,y2:pos.y});
+  } else if(tool==='rect'){
+    history.push({type:'rect',color,size,x:Math.min(startX,pos.x),y:Math.min(startY,pos.y),w:pos.x-startX,h:pos.y-startY});
+  } else if(tool==='circle'){
+    history.push({type:'circle',color,size,x:Math.min(startX,pos.x),y:Math.min(startY,pos.y),w:pos.x-startX,h:pos.y-startY});
+  } else if(tool==='parking'){
+    const w=pos.x-startX, h=pos.y-startY;
+    if(Math.abs(w)>20 && Math.abs(h)>20){
+      showParkingInput(startX, startY, w, h);
+      return; // 不立即 saveHistory，等弹窗确认
+    }
+  } else if(tool==='traffic'){
+    history.push({type:'traffic',size,x1:startX,y1:startY,x2:pos.x,y2:pos.y});
+  }
+  saveHistory(); redraw();
+}
+
+function showTextAt(x,y) {
+  const rect=canvas.getBoundingClientRect();
+  textOverlay.style.display='block';
+  document.getElementById('textInputWrap').style.display='block';
+  document.getElementById('parkingInput').style.display='none';
+  textOverlay.style.left=(rect.left+x)+'px'; textOverlay.style.top=(rect.top+y)+'px';
+  textInput.value=''; textInput.dataset.cx=x; textInput.dataset.cy=y; textInput.focus();
+}
+
+textInput.addEventListener('keydown', e=>{
+  if(e.key==='Enter'&&!e.shiftKey){
+    e.preventDefault();
+    const text=textInput.value.trim();
+    if(text){
+      history.push({type:'text',text,x:parseFloat(textInput.dataset.cx),y:parseFloat(textInput.dataset.cy)+parseInt(document.getElementById('fontSize').value),
+        color:document.getElementById('colorPicker').value,fontSize:parseInt(document.getElementById('fontSize').value)});
+      saveHistory();redraw();
+    }
+    hideAllInputs();
+  }else if(e.key==='Escape')hideAllInputs();
+});
+
+function undo(){history.pop();saveHistory();redraw();}
+function clearAll(){if(!history.length)return;if(confirm('确定清空所有标注吗？')){history=[];lotCounter=0;saveHistory();redraw();}}
+
+function deleteLot(idx) {
+  history.splice(idx,1); selectedIdx=-1; saveHistory(); redraw();
+}
+
+function updateStats() {
+  const lots = history.filter(h=>h.type==='parking');
+  const totalCap = lots.reduce((s,l)=>s+l.cap,0);
+  const totalParked = lots.reduce((s,l)=>s+(l.current||0),0);
+  const totalFree = totalCap - totalParked;
+  const target = 150;
+  document.getElementById('totalSlots').textContent = totalCap;
+  document.getElementById('totalLots').textContent = lots.length;
+  document.getElementById('totalParked').textContent = totalParked;
+  document.getElementById('totalFree').textContent = totalFree;
+  document.getElementById('statsBadge').textContent = totalParked+'/'+totalCap;
+  // 规划进度
+  const planPct = Math.min(100, Math.round(totalCap/target*100));
+  const pctEl = document.getElementById('progressText');
+  const fillEl = document.getElementById('progressFill');
+  fillEl.style.width = planPct+'%';
+  pctEl.textContent = planPct+'%';
+  const numEl = document.getElementById('totalSlots');
+  numEl.className = 'stat-num ' + (totalCap>=target?'ok':totalCap>=target*0.7?'warn':'danger');
+  fillEl.style.background = totalCap>=target?'#4caf50':totalCap>=target*0.7?'#ff9800':'#f44336';
+  // 已停颜色
+  document.getElementById('totalParked').style.color = totalParked > 0 ? '#ff9800' : '#556';
+  document.getElementById('totalFree').style.color = totalFree > 0 ? '#4caf50' : '#f44336';
+  // 停车场列表
+  const listEl = document.getElementById('lotList');
+  if(!lots.length){listEl.innerHTML='<div class="lot-empty">暂无停车场，使用停车场工具添加</div>';}
+  else {
+    listEl.innerHTML = lots.map(l=>{
+      const idx = history.indexOf(l);
+      const cur = l.current || 0;
+      const full = cur >= l.cap;
+      return `<div class="lot-item">
+        <span class="lot-color" style="background:${full?'#f44336':l.color}"></span>
+        <span class="lot-name">${l.name}${full?' (已满)':''}</span>
+        <span style="display:flex;align-items:center;gap:2px;">
+          <span class="lot-btn" onclick="changeParking(${idx},-1)" title="减少一辆">−</span>
+          <span class="lot-cap ${full?'full':'ok'}">${cur}/${l.cap}</span>
+          <span class="lot-btn" onclick="changeParking(${idx},1)" title="增加一辆">+</span>
+        </span>
+        <span class="lot-del" onclick="deleteLot(${idx})" title="删除">×</span>
+      </div>`;
+    }).join('');
+  }
+}
+
+function changeParking(idx, delta) {
+  const item = history[idx];
+  if (!item) return;
+  const cur = item.current || 0;
+  item.current = Math.max(0, Math.min(cur + delta, item.cap));
+  saveHistory(); redraw();
+}
+
+function saveImage() {
+  const saveC=document.createElement('canvas');
+  saveC.width=bgImage?bgImage.width:canvas.width;
+  saveC.height=bgImage?bgImage.height:canvas.height;
+  const saveCtx=saveC.getContext('2d');
+  const scale=bgImage?bgImage.width/canvas.width:1;
+  if(bgImage) saveCtx.drawImage(bgImage,0,0);
+  history.forEach(item=>{
+    const s=JSON.parse(JSON.stringify(item));
+    if(s.points)s.points=s.points.map(p=>({x:p.x*scale,y:p.y*scale}));
+    if(s.x!==undefined){s.x*=scale;s.y*=scale;s.w*=scale;s.h*=scale;}
+    if(s.x1!==undefined){s.x1*=scale;s.y1*=scale;s.x2*=scale;s.y2*=scale;}
+    if(s.fontSize)s.fontSize=Math.round(s.fontSize*scale);
+    if(s.size)s.size*=scale;
+    drawItem(saveCtx,s);
+  });
+  const link=document.createElement('a');
+  link.download='胡氏清念宗祠庆典_交通规划_'+new Date().toISOString().slice(0,10)+'.png';
+  link.href=saveC.toDataURL('image/png');
+  link.click();
+}
+
+document.addEventListener('keydown', e=>{
+  if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA')return;
+  if(e.ctrlKey&&e.key==='z'){e.preventDefault();undo();}
+  if(e.key==='v'||e.key==='V')setTool('move');
+  if(e.key==='b'||e.key==='B')setTool('draw');
+  if(e.key==='t'||e.key==='T')setTool('text');
+  if(e.key==='a'||e.key==='A')setTool('arrow');
+  if(e.key==='r'||e.key==='R')setTool('rect');
+  if(e.key==='e'||e.key==='E')setTool('eraser');
+  if(e.key==='c'||e.key==='C')setTool('circle');
+  if(e.key==='p'||e.key==='P')setTool('parking');
+  if(e.key==='f'||e.key==='F')setTool('traffic');
+  if(e.key==='g'||e.key==='G')setTool('guard');
+  if((e.key==='Delete'||e.key==='Backspace')&&selectedIdx>=0&&tool==='move'){
+    history.splice(selectedIdx,1);selectedIdx=-1;saveHistory();redraw();
+  }
+});
+
+loadImage();
+updateStats();
+</script>
+</body>
+</html>
