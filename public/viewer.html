@@ -6,63 +6,55 @@
 <title>胡氏清念宗祠重光庆典 - 停车实况</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
-body { background: #1a1a2e; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; min-height: 100vh; display: flex; flex-direction: column; }
+html, body { height: 100%; }
+body { background: #1a1a2e; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; display: flex; flex-direction: column; }
 
 .header {
   background: linear-gradient(135deg, #1a1a2e, #16213e);
   padding: 6px 12px; text-align: center;
-  border-bottom: 1px solid #e94560; position: relative;
+  border-bottom: 1px solid #e94560; position: relative; flex-shrink: 0;
 }
 .header h1 { color: #f0e6d3; font-size: 13px; letter-spacing: 1px; }
-.header .sub { color: #667; font-size: 9px; }
 .header .refresh-info {
   position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
   color: #445; font-size: 9px;
 }
 
-.content { flex: 1; padding: 8px; overflow-y: auto; }
+.map-container { flex: 1; position: relative; }
 
-/* 地图 */
-.map-section { margin-bottom: 8px; position: relative; }
-.map-section h3 { display: none; }
-.map-wrap {
-  border-radius: 6px; overflow: hidden; border: 1px solid #0f3460;
-}
-.map-wrap canvas { width: 100%; display: block; }
-
-/* 数据面板 - 悬浮在地图左上角 */
+/* 数据悬浮面板 */
 .data-panel {
-  position: absolute; top: 6px; left: 6px; z-index: 5;
-  background: rgba(22,33,62,0.88); border-radius: 4px;
-  backdrop-filter: blur(4px); padding: 4px 8px;
+  position: absolute; top: 8px; left: 8px; z-index: 100;
+  background: rgba(22,33,62,0.9); border-radius: 6px;
+  backdrop-filter: blur(4px); padding: 6px 10px; max-width: 200px;
 }
 .overview {
   display: flex; gap: 0;
   border-bottom: 1px solid rgba(15,52,96,0.5); margin-bottom: 3px; padding-bottom: 3px;
 }
 .overview-card {
-  padding: 1px 6px; text-align: center;
+  padding: 1px 8px; text-align: center;
   border-right: 1px solid rgba(15,52,96,0.5);
 }
 .overview-card:last-child { border-right: none; }
-.overview-card .num { font-size: 11px; font-weight: 700; }
+.overview-card .num { font-size: 12px; font-weight: 700; }
 .overview-card .label { font-size: 7px; color: #667; }
 
 .lot-panel {
-  font-size: 10px; color: #c0c8d4; line-height: 1.6;
+  font-size: 10px; color: #c0c8d4; line-height: 1.7;
 }
-.lot-panel .lot-row { display: flex; gap: 3px; }
+.lot-panel .lot-row { display: flex; gap: 3px; align-items: center; }
+.lot-panel .lot-row .dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
 .lot-panel .lot-row .lname { font-weight: 600; color: #f0e6d3; }
 .lot-panel .lot-row .lfree { color: #4caf50; font-weight: 600; }
 .lot-panel .lot-row .lfull { color: #f44336; font-weight: 600; }
 .lot-panel .lot-row .lpark { color: #8899aa; }
 
-.loading { text-align: center; color: #445; padding: 20px; font-size: 12px; }
-
-.notice {
-  background: #16213e; border-radius: 6px; padding: 10px 14px;
-  color: #c0c8d4; font-size: 12px; line-height: 1.8; text-align: center;
-  border: 1px solid #0f3460;
+/* 底部提示 */
+.notice-bar {
+  background: #16213e; padding: 6px 12px; text-align: center;
+  color: #8899aa; font-size: 10px; line-height: 1.5; flex-shrink: 0;
+  border-top: 1px solid #0f3460;
 }
 </style>
 </head>
@@ -73,55 +65,58 @@ body { background: #1a1a2e; font-family: -apple-system, BlinkMacSystemFont, "Seg
   <div class="refresh-info" id="refreshInfo">加载中...</div>
 </div>
 
-<div class="content">
-  <!-- 地图 + 悬浮数据 -->
-  <div class="map-section">
-    <h3>交通规划图</h3>
-    <div class="map-wrap">
-      <canvas id="mapCanvas"></canvas>
-    </div>
-    <div class="data-panel">
-      <div class="overview">
-        <div class="overview-card">
-          <div class="num" id="totalCap" style="color:#c0c8d4;">-</div>
-          <div class="label">总车位</div>
-        </div>
-        <div class="overview-card">
-          <div class="num" id="totalParked" style="color:#ff9800;">-</div>
-          <div class="label">已停</div>
-        </div>
-        <div class="overview-card">
-          <div class="num" id="totalFree" style="color:#4caf50;">-</div>
-          <div class="label">剩余</div>
-        </div>
+<div class="map-container">
+  <div id="map" style="width:100%;height:100%;"></div>
+  <div class="data-panel">
+    <div class="overview">
+      <div class="overview-card">
+        <div class="num" id="totalCap" style="color:#c0c8d4;">-</div>
+        <div class="label">总车位</div>
       </div>
-      <div class="lot-panel" id="lotPanel">
-        <div style="color:#556;font-size:9px;">加载中...</div>
+      <div class="overview-card">
+        <div class="num" id="totalParked" style="color:#ff9800;">-</div>
+        <div class="label">已停</div>
+      </div>
+      <div class="overview-card">
+        <div class="num" id="totalFree" style="color:#4caf50;">-</div>
+        <div class="label">剩余</div>
       </div>
     </div>
-  </div>
-
-  <div class="notice">
-    各个来宾，由于当天来车众多，为了确保交通顺畅，请大家按照交通指挥员指导进行停车。如有不便请多原谅！
+    <div class="lot-panel" id="lotPanel">
+      <div style="color:#556;font-size:9px;">加载中...</div>
+    </div>
   </div>
 </div>
 
+<div class="notice-bar">
+  各位来宾，由于当天来车众多，为了确保交通顺畅，请大家按照交通指挥员指导进行停车。如有不便请多原谅！
+</div>
+
+<script src="https://webapi.amap.com/maps?v=1.4.15&key=26e69ba4a37c0b591917e2317bddbd12"></script>
 <script>
-const REFRESH_INTERVAL = 5000; // 5秒刷新
+const REFRESH_INTERVAL = 5000;
+let map = null;
+let markers = {};
 let lastUpdate = 0;
+
+function initMap() {
+  var satellite = new AMap.TileLayer.Satellite();
+  map = new AMap.Map('map', {
+    zoom: 18,
+    center: [116.307510, 23.912505],
+    resizeEnable: true,
+    layers: [satellite]
+  });
+}
 
 async function fetchData() {
   try {
     const res = await fetch('/api/data');
-    if (!res.ok) throw new Error('请求失败');
+    if (!res.ok) throw new Error('err');
     const data = await res.json();
     renderData(data);
     lastUpdate = Date.now();
     document.getElementById('refreshInfo').textContent = '已更新';
-    setTimeout(() => {
-      const sec = Math.round((Date.now() - lastUpdate) / 1000);
-      document.getElementById('refreshInfo').textContent = sec + '秒前更新';
-    }, 1000);
   } catch (e) {
     document.getElementById('refreshInfo').textContent = '连接失败';
   }
@@ -138,114 +133,102 @@ function renderData(data) {
   document.getElementById('totalFree').textContent = totalFree;
   document.getElementById('totalFree').style.color = totalFree > 0 ? '#4caf50' : '#f44336';
 
+  // 列表面板
   if (!lots.length) {
-    document.getElementById('lotPanel').innerHTML = '<div style="color:#556;font-size:10px;">暂无停车数据</div>';
-    return;
+    document.getElementById('lotPanel').innerHTML = '<div style="color:#556;font-size:9px;">暂无停车数据</div>';
+  } else {
+    document.getElementById('lotPanel').innerHTML = lots.map(l => {
+      const cur = l.current || 0, cap = l.cap || 0, free = cap - cur;
+      const pct = cap > 0 ? cur / cap : 0;
+      const dotColor = pct >= 1 ? '#f44336' : pct >= 0.7 ? '#ff9800' : '#4caf50';
+      return `<div class="lot-row">
+        <span class="dot" style="background:${dotColor}"></span>
+        <span class="lname">${l.name}</span>
+        <span class="lpark">停${cur}</span>
+        <span class="${free>0?'lfree':'lfull'}">${free>0?'空'+free:'已满'}</span>
+      </div>`;
+    }).join('');
   }
 
-  document.getElementById('lotPanel').innerHTML = lots.map(l => {
+  // 更新地图标记
+  updateMapMarkers(lots, data.annotations || []);
+}
+
+function updateMapMarkers(lots, allAnnotations) {
+  if (!map) return;
+
+  // 收集所有有坐标的标注
+  const points = [];
+
+  lots.forEach(l => {
+    if (!l.lng || !l.lat) return; // 需要在 admin 中设置经纬度
     const cur = l.current || 0, cap = l.cap || 0;
     const free = cap - cur;
-    const freeClass = free > 0 ? 'lfree' : 'lfull';
-    const freeText = free > 0 ? '空' + free : '已满';
-    return `<div class="lot-row"><span class="lname">${l.name}</span><span class="lpark">停${cur}</span><span class="${freeClass}">${freeText}</span></div>`;
-  }).join('');
+    const pct = cap > 0 ? cur / cap : 0;
 
-  // 渲染地图缩略
-  renderMap(data);
-}
+    const key = 'lot_' + l.name;
+    if (markers[key]) map.remove(markers[key]);
 
-// 渲染带标注的地图
-function renderMap(data) {
-  const canvas = document.getElementById('mapCanvas');
-  const ctx = canvas.getContext('2d');
-  const img = new Image();
-  img.onload = () => {
-    const maxW = document.querySelector('.map-wrap').clientWidth;
-    const viewScale = maxW / img.width;
-    canvas.width = maxW;
-    canvas.height = img.height * viewScale;
-    // 画底图（稍微提亮）
-    ctx.filter = 'brightness(130%)';
-    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-    ctx.filter = 'none';
+    // 自定义标记内容
+    let statusColor, statusText;
+    if (pct >= 1) { statusColor = '#f44336'; statusText = '已满'; }
+    else if (pct >= 0.7) { statusColor = '#ff9800'; statusText = '紧张'; }
+    else { statusColor = '#4caf50'; statusText = '充足'; }
 
-    // admin 坐标基于 display canvas，需要反算到原图再缩放到 viewer
-    const adminScale = data.displayScale || 1; // 原图宽 / display canvas 宽
-    // 坐标转换: admin坐标 * adminScale = 原图坐标，再 * viewScale = viewer坐标
-    // 合并: admin坐标 * (adminScale * viewScale) = viewer坐标... 不对
-    // admin坐标 是 display canvas 上的，原图 = admin坐标 * adminScale
-    // viewer canvas = 原图 * viewScale
-    // 所以 viewer坐标 = admin坐标 * adminScale * viewScale
-    const s = adminScale * viewScale;
+    const content = `<div style="
+      background:rgba(22,33,62,0.9); border:2px solid ${statusColor};
+      border-radius:8px; padding:4px 8px; color:#fff; font-size:12px;
+      text-align:center; white-space:nowrap; font-family:-apple-system,sans-serif;
+    ">
+      <div style="font-weight:700;font-size:13px;">${l.name}</div>
+      <div style="font-size:10px;color:${statusColor};font-weight:600;">${statusText} · 空${free}</div>
+      <div style="font-size:9px;color:#8899aa;">${cur}/${cap}台</div>
+    </div>`;
 
-    (data.annotations || []).forEach(item => {
-      if (item.type === 'parking') {
-        const x = Math.min(item.x, item.x + item.w) * s;
-        const y = Math.min(item.y, item.y + item.h) * s;
-        const w = Math.abs(item.w) * s;
-        const h = Math.abs(item.h) * s;
-        const cur = item.current || 0, cap = item.cap || 0;
-        const pct = cap > 0 ? cur / cap : 0;
-        // 填充
-        ctx.fillStyle = pct >= 1 ? 'rgba(244,67,54,0.35)' : pct >= 0.7 ? 'rgba(255,152,0,0.25)' : 'rgba(76,175,80,0.2)';
-        ctx.fillRect(x, y, w, h);
-        // 边框
-        ctx.strokeStyle = pct >= 1 ? '#f44336' : pct >= 0.7 ? '#ff9800' : '#4caf50';
-        ctx.lineWidth = pct >= 1 ? 3 : 2;
-        ctx.setLineDash(pct >= 1 ? [] : [6,3]);
-        ctx.strokeRect(x, y, w, h);
-        ctx.setLineDash([]);
-        // 名称
-        const fs = Math.max(Math.min(w, h) * 0.2, 11);
-        ctx.font = `bold ${fs}px sans-serif`;
-        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        ctx.strokeStyle = 'rgba(0,0,0,0.7)'; ctx.lineWidth = 2; ctx.lineJoin = 'round';
-        ctx.strokeText(item.name, x+w/2, y+h/2-fs*0.3);
-        ctx.fillStyle = '#fff';
-        ctx.fillText(item.name, x+w/2, y+h/2-fs*0.3);
-        // 已停/总数
-        ctx.font = `bold ${fs*0.7}px sans-serif`;
-        ctx.strokeText(`${cur}/${cap} 台`, x+w/2, y+h/2+fs*0.5);
-        ctx.fillStyle = pct >= 1 ? '#f44336' : '#fff';
-        ctx.fillText(`${cur}/${cap} 台`, x+w/2, y+h/2+fs*0.5);
-        // 已满标记
-        if (pct >= 1) {
-          ctx.font = 'bold 10px sans-serif';
-          ctx.fillStyle = 'rgba(244,67,54,0.9)';
-          ctx.fillText('已满', x+w-16, y+10);
-        }
-        ctx.textAlign = 'start'; ctx.textBaseline = 'alphabetic';
-      } else if (item.type === 'guard') {
-        // 指挥员
-        const gx = item.x * s, gy = item.y * s;
-        ctx.beginPath(); ctx.arc(gx, gy, 8, 0, Math.PI*2);
-        ctx.fillStyle = 'rgba(0,188,212,0.2)'; ctx.fill();
-        ctx.strokeStyle = '#00bcd4'; ctx.lineWidth = 1.5; ctx.stroke();
-        ctx.beginPath(); ctx.arc(gx, gy-5, 2.5, 0, Math.PI*2);
-        ctx.fillStyle = '#00bcd4'; ctx.fill();
-        ctx.font = 'bold 8px sans-serif'; ctx.textAlign = 'center';
-        ctx.fillStyle = '#00bcd4'; ctx.fillText(item.name || '指挥', gx, gy+14);
-        ctx.textAlign = 'start';
-      } else if (item.type === 'traffic') {
-        // 导流箭头
-        const ax1=item.x1*s, ay1=item.y1*s, ax2=item.x2*s, ay2=item.y2*s;
-        const headLen = 10;
-        const angle = Math.atan2(ay2-ay1, ax2-ax1);
-        ctx.strokeStyle = '#ff9800'; ctx.lineWidth = 3; ctx.lineCap = 'round';
-        ctx.beginPath(); ctx.moveTo(ax1,ay1); ctx.lineTo(ax2,ay2); ctx.stroke();
-        ctx.fillStyle = '#ff9800';
-        ctx.beginPath(); ctx.moveTo(ax2,ay2);
-        ctx.lineTo(ax2-headLen*Math.cos(angle-0.5), ay2-headLen*Math.sin(angle-0.5));
-        ctx.lineTo(ax2-headLen*Math.cos(angle+0.5), ay2-headLen*Math.sin(angle+0.5));
-        ctx.closePath(); ctx.fill();
-      }
+    const marker = new AMap.Marker({
+      position: [l.lng, l.lat],
+      content: content,
+      offset: new AMap.Pixel(-40, -30),
+      zIndex: 120
     });
-  };
-  img.src = 'map.jpg';
+    marker.setMap(map);
+    markers[key] = marker;
+    points.push([l.lng, l.lat]);
+  });
+
+  // 指挥员
+  allAnnotations.filter(a => a.type === 'guard' && a.lng && a.lat).forEach(g => {
+    const key = 'guard_' + (g.name || '');
+    if (markers[key]) map.remove(markers[key]);
+    const content = `<div style="
+      background:rgba(0,188,212,0.85); border-radius:50%; width:28px; height:28px;
+      display:flex;align-items:center;justify-content:center;
+      color:#fff;font-size:10px;font-weight:700;font-family:sans-serif;
+      border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.4);
+    ">${(g.name||'指').charAt(0)}</div>`;
+    const marker = new AMap.Marker({
+      position: [g.lng, g.lat],
+      content: content,
+      offset: new AMap.Pixel(-14, -14),
+      zIndex: 110
+    });
+    marker.setMap(map);
+    markers[key] = marker;
+    points.push([g.lng, g.lat]);
+  });
+
+  // 自动调整视野
+  if (points.length > 0) {
+    if (points.length === 1) {
+      map.setCenter(points[0]);
+    } else {
+      map.setFitView(Object.values(markers));
+    }
+  }
 }
 
-// 定时刷新
+// 初始化
+initMap();
 fetchData();
 setInterval(fetchData, REFRESH_INTERVAL);
 </script>
