@@ -237,6 +237,57 @@ function updateMapMarkers(lots, allAnnotations) {
     points.push([g.lng, g.lat]);
   });
 
+  // 文字标注
+  allAnnotations.filter(a => a.type === 'text' && a.lng && a.lat).forEach((t, i) => {
+    const key = 'text_' + i;
+    if (markers[key]) map.remove(markers[key]);
+    const content = `<div style="
+      color:${t.color || '#fff'}; font-size:${t.fontSize || 16}px;
+      font-weight:700; font-family:-apple-system,sans-serif;
+      text-shadow: 0 0 4px rgba(0,0,0,0.8), 0 0 8px rgba(0,0,0,0.5);
+      white-space:nowrap;
+    ">${t.text}</div>`;
+    const marker = new AMap.Marker({
+      position: [t.lng, t.lat],
+      content: content,
+      offset: new AMap.Pixel(0, 0),
+      zIndex: 100
+    });
+    marker.setMap(map);
+    markers[key] = marker;
+    points.push([t.lng, t.lat]);
+  });
+
+  // 箭头
+  allAnnotations.filter(a => a.type === 'arrow' && a.lng1).forEach((a, i) => {
+    const key = 'arrow_' + i;
+    if (markers[key]) map.remove(markers[key]);
+    const polyline = new AMap.Polyline({
+      path: [[a.lng1, a.lat1], [a.lng2, a.lat2]],
+      strokeColor: a.color || '#fff',
+      strokeWeight: a.size || 3,
+      strokeOpacity: 0.9,
+      lineJoin: 'round'
+    });
+    polyline.setMap(map);
+    markers[key] = polyline;
+  });
+
+  // 导流线
+  allAnnotations.filter(a => a.type === 'traffic' && a.lng1).forEach((a, i) => {
+    const key = 'traffic_' + i;
+    if (markers[key]) map.remove(markers[key]);
+    const polyline = new AMap.Polyline({
+      path: [[a.lng1, a.lat1], [a.lng2, a.lat2]],
+      strokeColor: '#ff9800',
+      strokeWeight: (a.size || 3) + 2,
+      strokeOpacity: 0.9,
+      lineJoin: 'round'
+    });
+    polyline.setMap(map);
+    markers[key] = polyline;
+  });
+
   // 自动调整视野
   if (points.length > 0) {
     if (points.length === 1) {
