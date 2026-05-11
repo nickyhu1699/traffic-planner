@@ -173,7 +173,7 @@ function updateMapMarkers(lots, allAnnotations) {
     let statusColor, statusText;
     if (pct >= 1) { statusColor = '#f44336'; statusText = '已满'; }
     else if (pct >= 0.7) { statusColor = '#ff9800'; statusText = '紧张'; }
-    else { statusColor = '#4caf50'; statusText = '充足'; }
+    else { statusColor = l.color || '#4caf50'; statusText = '充足'; }
 
     const content = `<div style="
       background:rgba(22,33,62,0.9); border:2px solid ${statusColor};

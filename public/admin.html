@@ -753,8 +753,11 @@ function setTool(t) {
   else if (t === 'eraser') mapDiv.style.cursor = 'not-allowed';
   else mapDiv.style.cursor = 'crosshair';
 
-  // 重新渲染（更新 draggable 状态）
-  renderAll();
+  // 只更新 draggable 状态，不重新渲染
+  const draggable = (t === 'move');
+  Object.values(amapOverlays).forEach(o => {
+    if (o && typeof o.setDraggable === 'function') o.setDraggable(draggable);
+  });
 
   // 箭头/导流线监听
   if (t === 'arrow' || t === 'traffic') {
