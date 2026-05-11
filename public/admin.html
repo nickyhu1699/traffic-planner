@@ -446,20 +446,33 @@ function renderParking(item, idx) {
 
 function renderGuard(item, idx) {
   if (!item.lng || !item.lat) return;
-  const name = item.name || '指';
-  const content = `<div style="
-    background:rgba(0,188,212,0.85); border-radius:50%; width:32px; height:32px;
-    display:flex;align-items:center;justify-content:center;
-    color:#fff;font-size:12px;font-weight:700;font-family:sans-serif;
-    border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.4);
-  ">${name.charAt(0)}</div>
-  <div style="text-align:center;color:#00bcd4;font-size:10px;font-weight:600;
-    margin-top:2px;text-shadow:0 1px 2px rgba(0,0,0,0.8);">${name}</div>`;
+  const name = item.name || '指挥员';
+  const content = `<div style="text-align:center;white-space:nowrap;">
+    <div style="
+      background:rgba(0,188,212,0.9);border:2px solid #fff;
+      border-radius:50%;width:36px;height:36px;
+      display:flex;align-items:center;justify-content:center;
+      box-shadow:0 2px 8px rgba(0,0,0,0.4);margin:0 auto;
+    ">
+      <svg viewBox="0 0 32 32" width="26" height="26" fill="none">
+        <rect x="11" y="2" width="10" height="3" rx="1.5" fill="#fff"/>
+        <rect x="13.5" y="1" width="5" height="2" rx="1" fill="#fff"/>
+        <circle cx="16" cy="9" r="3.5" fill="#fff"/>
+        <rect x="11.5" y="13" width="9" height="3" rx="1" fill="#fff"/>
+        <rect x="12" y="16" width="8" height="8" rx="1.5" fill="#fff"/>
+        <rect x="8" y="13" width="4" height="2.5" rx="1" fill="#fff" transform="rotate(-30 10 14)"/>
+        <rect x="20" y="11" width="4" height="2.5" rx="1" fill="#fff" transform="rotate(25 22 12)"/>
+        <rect x="12" y="24" width="3" height="5" rx="1" fill="#fff"/>
+        <rect x="17" y="24" width="3" height="5" rx="1" fill="#fff"/>
+      </svg>
+    </div>
+    <div style="color:#fff;font-size:10px;font-weight:600;margin-top:2px;text-shadow:0 1px 3px rgba(0,0,0,0.8);">${name}</div>
+  </div>`;
 
   const marker = new AMap.Marker({
     position: [item.lng, item.lat],
     content: content,
-    offset: new AMap.Pixel(-16, -16),
+    offset: new AMap.Pixel(-50, -14),
     zIndex: 110,
     draggable: tool === 'move'
   });

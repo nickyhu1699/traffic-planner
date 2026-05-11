@@ -183,6 +183,10 @@ function updateMapMarkers(lots, allAnnotations) {
       <div style="font-weight:700;font-size:13px;">${l.name}</div>
       <div style="font-size:10px;color:${statusColor};font-weight:600;">${statusText} · 空${free}</div>
       <div style="font-size:9px;color:#8899aa;">${cur}/${cap}台</div>
+      <div onclick="event.stopPropagation();window.open('https://uri.amap.com/navigation?to=${l.lng},${l.lat},${l.name}&mode=car','_blank')"
+        style="margin-top:3px;padding:2px 0;border-radius:3px;background:${statusColor};color:#fff;font-size:9px;cursor:pointer;font-weight:600;">
+        点击导航到此
+      </div>
     </div>`;
 
     const marker = new AMap.Marker({
@@ -200,16 +204,32 @@ function updateMapMarkers(lots, allAnnotations) {
   allAnnotations.filter(a => a.type === 'guard' && a.lng && a.lat).forEach(g => {
     const key = 'guard_' + (g.name || '');
     if (markers[key]) map.remove(markers[key]);
-    const content = `<div style="
-      background:rgba(0,188,212,0.85); border-radius:50%; width:28px; height:28px;
-      display:flex;align-items:center;justify-content:center;
-      color:#fff;font-size:10px;font-weight:700;font-family:sans-serif;
-      border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.4);
-    ">${(g.name||'指').charAt(0)}</div>`;
+    const name = g.name || '指挥员';
+    const content = `<div style="text-align:center;white-space:nowrap;">
+      <div style="
+        background:rgba(0,188,212,0.9);border:2px solid #fff;
+        border-radius:50%;width:36px;height:36px;
+        display:flex;align-items:center;justify-content:center;
+        box-shadow:0 2px 8px rgba(0,0,0,0.4);margin:0 auto;
+      ">
+        <svg viewBox="0 0 32 32" width="26" height="26" fill="none">
+          <rect x="11" y="2" width="10" height="3" rx="1.5" fill="#fff"/>
+          <rect x="13.5" y="1" width="5" height="2" rx="1" fill="#fff"/>
+          <circle cx="16" cy="9" r="3.5" fill="#fff"/>
+          <rect x="11.5" y="13" width="9" height="3" rx="1" fill="#fff"/>
+          <rect x="12" y="16" width="8" height="8" rx="1.5" fill="#fff"/>
+          <rect x="8" y="13" width="4" height="2.5" rx="1" fill="#fff" transform="rotate(-30 10 14)"/>
+          <rect x="20" y="11" width="4" height="2.5" rx="1" fill="#fff" transform="rotate(25 22 12)"/>
+          <rect x="12" y="24" width="3" height="5" rx="1" fill="#fff"/>
+          <rect x="17" y="24" width="3" height="5" rx="1" fill="#fff"/>
+        </svg>
+      </div>
+      <div style="color:#fff;font-size:10px;font-weight:600;margin-top:2px;text-shadow:0 1px 3px rgba(0,0,0,0.8);">${name}</div>
+    </div>`;
     const marker = new AMap.Marker({
       position: [g.lng, g.lat],
       content: content,
-      offset: new AMap.Pixel(-14, -14),
+      offset: new AMap.Pixel(-50, -14),
       zIndex: 110
     });
     marker.setMap(map);
