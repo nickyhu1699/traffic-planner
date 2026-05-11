@@ -70,7 +70,7 @@
     },
     {
       "type": "parking",
-      "name": "E区-上屋祠���门口",
+      "name": "E区-上屋祠堂门口",
       "cap": 6,
       "current": 0,
       "color": "#8bc34a",
@@ -86,8 +86,8 @@
     {
       "type": "guard",
       "name": "伟新",
-      "lng": 116.307131,
-      "lat": 23.915131
+      "lng": 116.307378,
+      "lat": 23.91517
     },
     {
       "type": "parking",
