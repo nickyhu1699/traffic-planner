@@ -53,7 +53,7 @@ function githubRequest(method, path, body) {
 
 async function syncToGitHub() {
   if (!GH_TOKEN) return;
-  // 防抖：30秒内只同步一次
+  // 防抖：5秒内只同步一次
   if (syncTimer) clearTimeout(syncTimer);
   syncTimer = setTimeout(async () => {
     try {
@@ -72,7 +72,7 @@ async function syncToGitHub() {
     } catch (e) {
       console.warn('GitHub 同步失败:', e.message);
     }
-  }, 30000);
+  }, 5000);
 }
 
 // 简易 MIME 类型
@@ -136,13 +136,17 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  // 静态文件服务
+  // 静态文件服务（防止路径穿越）
   let filePath = req.url === '/' ? '/index.html' : req.url;
-  // /admin → admin.html, /viewer → viewer.html
   if (filePath === '/admin') filePath = '/admin.html';
   if (filePath === '/viewer') filePath = '/viewer.html';
 
-  const fullPath = path.join(PUBLIC_DIR, filePath);
+  // 路径归一化，禁止穿越 public 目录
+  const decoded = decodeURIComponent(filePath);
+  const fullPath = path.normalize(path.join(PUBLIC_DIR, decoded));
+  if (!fullPath.startsWith(PUBLIC_DIR)) {
+    res.writeHead(403); res.end('Forbidden'); return;
+  }
   const ext = path.extname(fullPath).toLowerCase();
   const mime = MIME[ext] || 'application/octet-stream';
 

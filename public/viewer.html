@@ -157,6 +157,10 @@ function renderData(data) {
 function updateMapMarkers(lots, allAnnotations) {
   if (!map) return;
 
+  // 先清除所有旧标记，防止删除/改名后残留
+  Object.values(markers).forEach(m => { if (m && m.setMap) m.setMap(null); });
+  markers = {};
+
   // 收集所有有坐标的标注
   const points = [];
 
