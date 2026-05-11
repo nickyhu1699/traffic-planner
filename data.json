@@ -274,6 +274,14 @@
       "lat2": 23.913328,
       "color": "#ff0000",
       "size": 3
+    },
+    {
+      "type": "text",
+      "text": "导示处 1",
+      "lng": 116.305367,
+      "lat": 23.913385,
+      "color": "#ff0000",
+      "fontSize": 16
     }
   ],
   "parkingState": {
