@@ -287,6 +287,9 @@ input[type="range"] { flex: 1; }
       <div class="action-btns">
         <button class="btn" onclick="undo()">撤销</button>
         <button class="btn" onclick="clearAll()">清空标注</button>
+        <button class="btn" onclick="exportData()">导出数据</button>
+        <button class="btn" onclick="document.getElementById('importFile').click()">导入数据</button>
+        <input type="file" id="importFile" accept=".json" style="display:none;" onchange="importData(event)">
       </div>
     </div>
 
@@ -415,6 +418,7 @@ function renderParking(item, idx) {
     <div style="font-weight:700;font-size:14px;">${item.name}</div>
     <div style="font-size:10px;color:${borderColor};font-weight:600;">${statusText}</div>
     <div style="font-size:10px;color:#8899aa;">${cur}/${cap}台</div>
+    <div onclick="editParking(${idx})" style="margin-top:3px;padding:2px 0;border-radius:3px;background:rgba(255,255,255,0.15);color:#ccc;font-size:9px;cursor:pointer;">编辑</div>
   </div>`;
 
   const marker = new AMap.Marker({
@@ -467,6 +471,7 @@ function renderGuard(item, idx) {
       </svg>
     </div>
     <div style="color:#fff;font-size:10px;font-weight:600;margin-top:2px;text-shadow:0 1px 3px rgba(0,0,0,0.8);">${name}</div>
+    <div onclick="editGuard(${idx})" style="margin-top:2px;padding:1px 6px;border-radius:3px;background:rgba(255,255,255,0.15);color:#ccc;font-size:9px;cursor:pointer;">编辑</div>
   </div>`;
 
   const marker = new AMap.Marker({
@@ -695,6 +700,34 @@ document.getElementById('popupFields').addEventListener('keydown', e => {
   if (e.key === 'Escape') closePopup();
 });
 
+// ==================== 编辑已有标注 ====================
+function editParking(idx) {
+  const item = history[idx];
+  if (!item) return;
+  showPopup('编辑停车场', [
+    { key: 'name', label: '停车场名称', value: item.name },
+    { key: 'cap', label: '车位数量', type: 'number', value: item.cap, min: 1 }
+  ], {}, (vals) => {
+    if (vals.name) item.name = vals.name;
+    if (vals.cap > 0) item.cap = vals.cap;
+    if (item.current > item.cap) item.current = item.cap;
+    saveHistory();
+    renderAll();
+  });
+}
+
+function editGuard(idx) {
+  const item = history[idx];
+  if (!item) return;
+  showPopup('编辑指挥员', [
+    { key: 'name', label: '指挥员姓名', value: item.name || '' }
+  ], {}, (vals) => {
+    if (vals.name) item.name = vals.name;
+    saveHistory();
+    renderAll();
+  });
+}
+
 function showParkingPopup(lng, lat) {
   lotCounter++;
   const autoName = String.fromCharCode(64 + lotCounter) + '区';
@@ -841,6 +874,40 @@ function clearAll() {
     saveHistory();
     renderAll();
   }
+}
+
+function exportData() {
+  const data = { annotations: history, exportTime: new Date().toISOString() };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = '交通规划数据_' + new Date().toISOString().slice(0, 10) + '.json';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function importData(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(ev) {
+    try {
+      const data = JSON.parse(ev.target.result);
+      const annotations = data.annotations || data;
+      if (!Array.isArray(annotations)) throw new Error('格式错误');
+      if (!confirm('导入将覆盖当前所有数据，确定继续吗？')) return;
+      history = annotations;
+      lotCounter = history.filter(h => h.type === 'parking').length;
+      saveHistory();
+      renderAll();
+      alert('导入成功！共 ' + history.length + ' 条标注');
+    } catch (err) {
+      alert('导入失败：文件格式不正确');
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
 }
 
 // ==================== 属性控件 ====================
