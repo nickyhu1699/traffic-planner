@@ -290,6 +290,12 @@
       "lat": 23.911928,
       "color": "#ff0000",
       "fontSize": 16
+    },
+    {
+      "type": "guard",
+      "name": "周朋",
+      "lng": 116.306498,
+      "lat": 23.913856
     }
   ],
   "parkingState": {
