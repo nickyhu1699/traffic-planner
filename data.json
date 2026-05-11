@@ -284,18 +284,18 @@
       "fontSize": 16
     },
     {
-      "type": "text",
-      "text": "导示出 2",
-      "lng": 116.305962,
-      "lat": 23.911928,
-      "color": "#ff0000",
-      "fontSize": 16
-    },
-    {
       "type": "guard",
       "name": "周朋",
       "lng": 116.304621,
       "lat": 23.914454
+    },
+    {
+      "type": "text",
+      "text": "导示处 2",
+      "lng": 116.306187,
+      "lat": 23.912223,
+      "color": "#ff0000",
+      "fontSize": 16
     }
   ],
   "parkingState": {
