@@ -70,7 +70,7 @@
     },
     {
       "type": "parking",
-      "name": "E区-上屋祠���门口",
+      "name": "E区-上屋祠堂门口",
       "cap": 6,
       "current": 0,
       "color": "#8bc34a",
@@ -173,8 +173,8 @@
     {
       "type": "guard",
       "name": "福安",
-      "lng": 116.307448,
-      "lat": 23.914851
+      "lng": 116.304664,
+      "lat": 23.914449
     },
     {
       "type": "villageExit",
