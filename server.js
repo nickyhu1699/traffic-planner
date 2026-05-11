@@ -1,10 +1,18 @@
 const http = require('http');
+const https = require('https');
 const fs = require('fs');
 const path = require('path');
 
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 const DATA_FILE = path.join(__dirname, 'data.json');
 const PUBLIC_DIR = path.join(__dirname, 'public');
+
+// GitHub 同步配置
+const GH_TOKEN = process.env.GH_TOKEN || '';
+const GH_REPO = 'nickyhu1699/traffic-planner';
+const GH_FILE = 'data.json';
+let ghSha = null; // 缓存 data.json 的 SHA
+let syncTimer = null; // 防抖定时器
 
 // 初始化数据文件
 if (!fs.existsSync(DATA_FILE)) {
@@ -18,6 +26,53 @@ function readData() {
 
 function writeData(data) {
   fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
+  syncToGitHub(); // 写入后同步到 GitHub
+}
+
+// ========== GitHub 同步 ==========
+function githubRequest(method, path, body) {
+  return new Promise((resolve, reject) => {
+    const opts = {
+      hostname: 'api.github.com', path, method,
+      headers: {
+        'Authorization': `token ${GH_TOKEN}`,
+        'User-Agent': 'traffic-planner',
+        'Content-Type': 'application/json'
+      }
+    };
+    const req = https.request(opts, res => {
+      let d = '';
+      res.on('data', c => d += c);
+      res.on('end', () => { try { resolve(JSON.parse(d)); } catch { resolve(d); } });
+    });
+    req.on('error', reject);
+    if (body) req.write(JSON.stringify(body));
+    req.end();
+  });
+}
+
+async function syncToGitHub() {
+  if (!GH_TOKEN) return;
+  // 防抖：30秒内只同步一次
+  if (syncTimer) clearTimeout(syncTimer);
+  syncTimer = setTimeout(async () => {
+    try {
+      // 获取当前 SHA
+      const info = await githubRequest('GET', `/repos/${GH_REPO}/contents/${GH_FILE}`);
+      if (info.sha) ghSha = info.sha;
+
+      const content = fs.readFileSync(DATA_FILE, 'utf8');
+      const result = await githubRequest('PUT', `/repos/${GH_REPO}/contents/${GH_FILE}`, {
+        message: 'data: 同步停车数据',
+        content: Buffer.from(content).toString('base64'),
+        sha: ghSha
+      });
+      if (result.content && result.content.sha) ghSha = result.content.sha;
+      console.log('数据已同步到 GitHub');
+    } catch (e) {
+      console.warn('GitHub 同步失败:', e.message);
+    }
+  }, 30000);
 }
 
 // 简易 MIME 类型

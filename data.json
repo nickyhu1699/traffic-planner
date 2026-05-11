@@ -1,0 +1,56 @@
+{
+  "annotations": [
+    {
+      "type": "parking",
+      "name": "B区",
+      "cap": 10,
+      "current": 0,
+      "color": "#2196f3",
+      "lng": 116.306453,
+      "lat": 23.910995
+    },
+    {
+      "type": "parking",
+      "name": "C区",
+      "cap": 22,
+      "current": 0,
+      "color": "#ff9800",
+      "lng": 116.305075,
+      "lat": 23.911588
+    },
+    {
+      "type": "parking",
+      "name": "D区",
+      "cap": 5,
+      "current": 0,
+      "color": "#ff9800",
+      "lng": 116.308787,
+      "lat": 23.913201
+    },
+    {
+      "type": "text",
+      "text": "宗祠",
+      "lng": 116.30766,
+      "lat": 23.911995,
+      "color": "#ff0000",
+      "fontSize": 16
+    },
+    {
+      "type": "guard",
+      "name": "hgg",
+      "lng": 116.307065,
+      "lat": 23.911912
+    },
+    {
+      "type": "guard",
+      "name": "胡弧",
+      "lng": 116.306867,
+      "lat": 23.912466
+    }
+  ],
+  "parkingState": {
+    "B区": 0,
+    "C区": 0,
+    "D区": 0
+  }
+}
