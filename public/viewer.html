@@ -99,6 +99,7 @@ let map = null;
 let markers = {};
 let trafficAnimations = [];
 let lastUpdate = 0;
+let firstLoad = true;
 
 function initMap() {
   var satellite = new AMap.TileLayer.Satellite();
@@ -340,8 +341,9 @@ function updateMapMarkers(lots, allAnnotations) {
     startTrafficFlow(path, 'trafficFlow_' + i);
   });
 
-  // 自动调整视野
-  if (points.length > 0) {
+  // 仅首次加载调整视野，后续刷新不跳转
+  if (firstLoad && points.length > 0) {
+    firstLoad = false;
     if (points.length === 1) {
       map.setCenter(points[0]);
     } else {
