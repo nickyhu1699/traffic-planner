@@ -97,6 +97,7 @@ body { background: #1a1a2e; font-family: -apple-system, BlinkMacSystemFont, "Seg
 const REFRESH_INTERVAL = 5000;
 let map = null;
 let markers = {};
+let trafficAnimations = [];
 let lastUpdate = 0;
 
 function initMap() {
@@ -158,6 +159,8 @@ function updateMapMarkers(lots, allAnnotations) {
   if (!map) return;
 
   // 先清除所有旧标记，防止删除/改名后残留
+  trafficAnimations.forEach(id => clearInterval(id));
+  trafficAnimations = [];
   Object.values(markers).forEach(m => { if (m && m.setMap) m.setMap(null); });
   markers = {};
 
@@ -298,8 +301,10 @@ function updateMapMarkers(lots, allAnnotations) {
   allAnnotations.filter(a => a.type === 'arrow' && a.lng1).forEach((a, i) => {
     const key = 'arrow_' + i;
     if (markers[key]) map.remove(markers[key]);
+    const path = [[a.lng1, a.lat1], [a.lng2, a.lat2]];
+    const angle = getLineAngle(path[0], path[1]);
     const polyline = new AMap.Polyline({
-      path: [[a.lng1, a.lat1], [a.lng2, a.lat2]],
+      path: path,
       strokeColor: a.color || '#fff',
       strokeWeight: a.size || 3,
       strokeOpacity: 0.9,
@@ -307,14 +312,24 @@ function updateMapMarkers(lots, allAnnotations) {
     });
     polyline.setMap(map);
     markers[key] = polyline;
+
+    const arrowHead = new AMap.Marker({
+      position: [a.lng2, a.lat2],
+      content: arrowHeadContent(a.color || '#fff', angle + 180),
+      offset: new AMap.Pixel(-10, -10),
+      zIndex: 125
+    });
+    arrowHead.setMap(map);
+    markers['arrowHead_' + i] = arrowHead;
   });
 
   // 导流线
-  allAnnotations.filter(a => a.type === 'traffic' && a.lng1).forEach((a, i) => {
+  allAnnotations.filter(a => a.type === 'traffic' && getTrafficPath(a).length >= 2).forEach((a, i) => {
+    const path = getTrafficPath(a);
     const key = 'traffic_' + i;
     if (markers[key]) map.remove(markers[key]);
     const polyline = new AMap.Polyline({
-      path: [[a.lng1, a.lat1], [a.lng2, a.lat2]],
+      path: path,
       strokeColor: '#ff9800',
       strokeWeight: (a.size || 3) + 2,
       strokeOpacity: 0.9,
@@ -322,6 +337,7 @@ function updateMapMarkers(lots, allAnnotations) {
     });
     polyline.setMap(map);
     markers[key] = polyline;
+    startTrafficFlow(path, 'trafficFlow_' + i);
   });
 
   // 自动调整视野
@@ -332,6 +348,99 @@ function updateMapMarkers(lots, allAnnotations) {
       map.setFitView(Object.values(markers));
     }
   }
+}
+
+function getTrafficPath(item) {
+  if (Array.isArray(item.points) && item.points.length) return item.points;
+  if (item.lng1 && item.lat1 && item.lng2 && item.lat2) {
+    return [[item.lng1, item.lat1], [item.lng2, item.lat2]];
+  }
+  return [];
+}
+
+function getPathPoint(path, progress) {
+  let total = 0;
+  const lengths = [];
+  for (let i = 1; i < path.length; i++) {
+    const a = path[i - 1], b = path[i];
+    const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+    lengths.push(len);
+    total += len;
+  }
+  if (!total) return { lng: path[0][0], lat: path[0][1], angle: 0 };
+
+  let dist = (progress % 1) * total;
+  for (let i = 1; i < path.length; i++) {
+    const len = lengths[i - 1];
+    if (dist <= len) {
+      const a = path[i - 1], b = path[i];
+      const ratio = len ? dist / len : 0;
+      return {
+        lng: a[0] + (b[0] - a[0]) * ratio,
+        lat: a[1] + (b[1] - a[1]) * ratio,
+        angle: -Math.atan2(b[1] - a[1], b[0] - a[0]) * 180 / Math.PI
+      };
+    }
+    dist -= len;
+  }
+  const last = path[path.length - 1];
+  return { lng: last[0], lat: last[1], angle: 0 };
+}
+
+function getLineAngle(start, end) {
+  return -Math.atan2(end[1] - start[1], end[0] - start[0]) * 180 / Math.PI;
+}
+
+function arrowHeadContent(color, angle) {
+  return `<div style="
+    width:20px;height:20px;display:flex;align-items:center;justify-content:center;
+    color:${color};transform:rotate(${angle}deg);
+    filter:drop-shadow(0 0 4px rgba(0,0,0,0.5));
+  ">
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" stroke="none">
+      <path d="M4 12l10-7v5h6v4h-6v5z"></path>
+    </svg>
+  </div>`;
+}
+
+function trafficArrowContent(angle) {
+  return `<div style="
+    width:18px;height:18px;border-radius:50%;background:#ff9800;color:#fff;
+    display:flex;align-items:center;justify-content:center;
+    box-shadow:0 0 8px rgba(255,152,0,0.8);
+    transform:rotate(${angle}deg);
+  ">
+    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M5 12h12"/>
+      <path d="M13 6l6 6-6 6"/>
+    </svg>
+  </div>`;
+}
+
+function startTrafficFlow(path, keyPrefix) {
+  const arrows = [0, 0.33, 0.66].map((offset, i) => {
+    const marker = new AMap.Marker({
+      content: trafficArrowContent(0),
+      offset: new AMap.Pixel(-9, -9),
+      zIndex: 130,
+      bubble: true
+    });
+    marker.setMap(map);
+    markers[keyPrefix + '_' + i] = marker;
+    return { marker, offset };
+  });
+
+  let phase = 0;
+  const update = () => {
+    phase = (phase + 0.018) % 1;
+    arrows.forEach(({ marker, offset }) => {
+      const p = getPathPoint(path, phase + offset);
+      marker.setPosition([p.lng, p.lat]);
+      marker.setContent(trafficArrowContent(p.angle));
+    });
+  };
+  update();
+  trafficAnimations.push(setInterval(update, 80));
 }
 
 function getVillageGateConfig(kind) {

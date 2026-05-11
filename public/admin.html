@@ -312,7 +312,7 @@ input[type="range"] { flex: 1; }
     <div class="shortcuts">
       <div class="shortcut-list">
         <kbd>V</kbd>移动 <kbd>T</kbd>文字 <kbd>P</kbd>停车场<br>
-        <kbd>A</kbd>箭头 <kbd>F</kbd>导流 <kbd>G</kbd>指挥员 <kbd>E</kbd>删除<br>
+        <kbd>A</kbd>箭头 <kbd>F</kbd>导流(拖画) <kbd>G</kbd>指挥员 <kbd>E</kbd>删除<br>
         <kbd>O</kbd>出村口 <kbd>I</kbd>进村口<br>
         <kbd>Ctrl+Z</kbd>撤销
       </div>
@@ -328,6 +328,7 @@ let tool = 'parking';
 let history = [];
 let useServer = false;
 let amapOverlays = {}; // key → AMap overlay
+let trafficAnimations = [];
 
 // 停车场颜色循环
 const LOT_COLORS = ['#4caf50','#2196f3','#ff9800','#9c27b0','#00bcd4','#e91e63','#8bc34a','#ff5722'];
@@ -336,6 +337,9 @@ let lotCounter = 0;
 // 箭头/导流线的第一个点
 let arrowStart = null;
 let arrowPreview = null;
+let trafficDraft = null;
+let trafficPreview = null;
+let trafficPointerId = null;
 
 // ==================== 地图初始化 ====================
 function initMap() {
@@ -366,6 +370,8 @@ function initMap() {
       setTimeout(() => { this.textContent = text; }, 1000);
     }
   });
+
+  setupTrafficDrawing();
 }
 
 // ==================== 数据 ====================
@@ -401,6 +407,8 @@ async function saveHistory() {
 // ==================== 渲染 ====================
 function renderAll() {
   // 清除所有 overlay
+  trafficAnimations.forEach(id => clearInterval(id));
+  trafficAnimations = [];
   Object.values(amapOverlays).forEach(o => { if (o && o.setMap) o.setMap(null); });
   amapOverlays = {};
 
@@ -486,7 +494,7 @@ function renderVillageGate(item, idx, kind) {
       history.splice(idx, 1);
       saveHistory();
       renderAll();
-    } else if (tool === 'arrow' || tool === 'traffic') {
+    } else if (tool === 'arrow') {
       onMapClick({ lnglat: e.lnglat });
     }
   });
@@ -536,8 +544,8 @@ function renderParking(item, idx) {
       history.splice(idx, 1);
       saveHistory();
       renderAll();
-    } else if (tool === 'arrow' || tool === 'traffic') {
-      // 箭头/导流线模式：模拟地图点击
+    } else if (tool === 'arrow') {
+      // 箭头模式：模拟地图点击
       onMapClick({ lnglat: e.lnglat });
     }
   });
@@ -592,7 +600,7 @@ function renderGuard(item, idx) {
       history.splice(idx, 1);
       saveHistory();
       renderAll();
-    } else if (tool === 'arrow' || tool === 'traffic') {
+    } else if (tool === 'arrow') {
       onMapClick({ lnglat: e.lnglat });
     }
   });
@@ -604,6 +612,7 @@ function renderGuard(item, idx) {
 function renderArrow(item, idx) {
   if (!item.lng1 || !item.lat1) return;
   const path = [[item.lng1, item.lat1], [item.lng2, item.lat2]];
+  const angle = getLineAngle(path[0], path[1]);
   const polyline = new AMap.Polyline({
     path: path,
     strokeColor: item.color || '#fff',
@@ -614,21 +623,32 @@ function renderArrow(item, idx) {
   polyline.setMap(map);
   amapOverlays['arrow_' + idx] = polyline;
 
+  const arrowHead = new AMap.Marker({
+    position: [item.lng2, item.lat2],
+    content: arrowHeadContent(item.color || '#fff', angle + 180),
+    offset: new AMap.Pixel(-10, -10),
+    zIndex: 125
+  });
+  arrowHead.setMap(map);
+  amapOverlays['arrowHead_' + idx] = arrowHead;
+
   // 点击删除 / 箭头穿透
-  polyline.on('click', e => {
+  const removeArrow = () => {
     if (tool === 'eraser') {
       history.splice(idx, 1);
       saveHistory();
       renderAll();
-    } else if (tool === 'arrow' || tool === 'traffic') {
-      onMapClick({ lnglat: e.lnglat });
+    } else if (tool === 'arrow') {
+      onMapClick({ lnglat: new AMap.LngLat(item.lng2, item.lat2) });
     }
-  });
+  };
+  polyline.on('click', removeArrow);
+  arrowHead.on('click', removeArrow);
 }
 
 function renderTraffic(item, idx) {
-  if (!item.lng1 || !item.lat1) return;
-  const path = [[item.lng1, item.lat1], [item.lng2, item.lat2]];
+  const path = getTrafficPath(item);
+  if (path.length < 2) return;
   const polyline = new AMap.Polyline({
     path: path,
     strokeColor: '#ff9800',
@@ -645,10 +665,105 @@ function renderTraffic(item, idx) {
       history.splice(idx, 1);
       saveHistory();
       renderAll();
-    } else if (tool === 'arrow' || tool === 'traffic') {
+    } else if (tool === 'arrow') {
       onMapClick({ lnglat: e.lnglat });
     }
   });
+
+  startTrafficFlow(path, 'trafficFlow_' + idx);
+}
+
+function getTrafficPath(item) {
+  if (Array.isArray(item.points) && item.points.length) return item.points;
+  if (item.lng1 && item.lat1 && item.lng2 && item.lat2) {
+    return [[item.lng1, item.lat1], [item.lng2, item.lat2]];
+  }
+  return [];
+}
+
+function getPathPoint(path, progress) {
+  let total = 0;
+  const lengths = [];
+  for (let i = 1; i < path.length; i++) {
+    const a = path[i - 1], b = path[i];
+    const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+    lengths.push(len);
+    total += len;
+  }
+  if (!total) return { lng: path[0][0], lat: path[0][1], angle: 0 };
+
+  let dist = (progress % 1) * total;
+  for (let i = 1; i < path.length; i++) {
+    const len = lengths[i - 1];
+    if (dist <= len) {
+      const a = path[i - 1], b = path[i];
+      const ratio = len ? dist / len : 0;
+      return {
+        lng: a[0] + (b[0] - a[0]) * ratio,
+        lat: a[1] + (b[1] - a[1]) * ratio,
+        angle: -Math.atan2(b[1] - a[1], b[0] - a[0]) * 180 / Math.PI
+      };
+    }
+    dist -= len;
+  }
+  const last = path[path.length - 1];
+  return { lng: last[0], lat: last[1], angle: 0 };
+}
+
+function getLineAngle(start, end) {
+  return -Math.atan2(end[1] - start[1], end[0] - start[0]) * 180 / Math.PI;
+}
+
+function arrowHeadContent(color, angle) {
+  return `<div style="
+    width:20px;height:20px;display:flex;align-items:center;justify-content:center;
+    color:${color};transform:rotate(${angle}deg);
+    filter:drop-shadow(0 0 4px rgba(0,0,0,0.5));
+  ">
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" stroke="none">
+      <path d="M4 12l10-7v5h6v4h-6v5z"></path>
+    </svg>
+  </div>`;
+}
+
+function trafficArrowContent(angle) {
+  return `<div style="
+    width:18px;height:18px;border-radius:50%;background:#ff9800;color:#fff;
+    display:flex;align-items:center;justify-content:center;
+    box-shadow:0 0 8px rgba(255,152,0,0.8);
+    transform:rotate(${angle}deg);
+  ">
+    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M5 12h12"/>
+      <path d="M13 6l6 6-6 6"/>
+    </svg>
+  </div>`;
+}
+
+function startTrafficFlow(path, keyPrefix) {
+  const arrows = [0, 0.33, 0.66].map((offset, i) => {
+    const marker = new AMap.Marker({
+      content: trafficArrowContent(0),
+      offset: new AMap.Pixel(-9, -9),
+      zIndex: 130,
+      bubble: true
+    });
+    marker.setMap(map);
+    amapOverlays[keyPrefix + '_' + i] = marker;
+    return { marker, offset };
+  });
+
+  let phase = 0;
+  const update = () => {
+    phase = (phase + 0.018) % 1;
+    arrows.forEach(({ marker, offset }) => {
+      const p = getPathPoint(path, phase + offset);
+      marker.setPosition([p.lng, p.lat]);
+      marker.setContent(trafficArrowContent(p.angle));
+    });
+  };
+  update();
+  trafficAnimations.push(setInterval(update, 80));
 }
 
 function renderText(item, idx) {
@@ -706,7 +821,7 @@ function onMapClick(e) {
     renderAll();
   } else if (tool === 'text') {
     showTextPopup(lng, lat);
-  } else if (tool === 'arrow' || tool === 'traffic') {
+  } else if (tool === 'arrow') {
     if (!arrowStart) {
       arrowStart = { lng, lat };
       // 不画起点标记，避免拦截第二次点击
@@ -716,11 +831,7 @@ function onMapClick(e) {
       // 完成箭头/导流线
       const color = document.getElementById('colorPicker').value;
       const size = 3;
-      if (tool === 'arrow') {
-        history.push({ type: 'arrow', lng1: arrowStart.lng, lat1: arrowStart.lat, lng2: lng, lat2: lat, color, size });
-      } else {
-        history.push({ type: 'traffic', lng1: arrowStart.lng, lat1: arrowStart.lat, lng2: lng, lat2: lat, size });
-      }
+      history.push({ type: 'arrow', lng1: arrowStart.lng, lat1: arrowStart.lat, lng2: lng, lat2: lat, color, size });
       if (arrowPreview) { arrowPreview.setMap(null); arrowPreview = null; }
       arrowStart = null;
       saveHistory();
@@ -737,12 +848,12 @@ function setupArrowPreview() {
 }
 
 function onArrowMove(e) {
-  if (!arrowStart || (tool !== 'arrow' && tool !== 'traffic')) return;
+  if (!arrowStart || tool !== 'arrow') return;
   const lng = e.lnglat.getLng(), lat = e.lnglat.getLat();
   if (arrowPreview) arrowPreview.setMap(null);
   arrowPreview = new AMap.Polyline({
     path: [[arrowStart.lng, arrowStart.lat], [lng, lat]],
-    strokeColor: tool === 'traffic' ? '#ff9800' : (document.getElementById('colorPicker').value || '#fff'),
+    strokeColor: document.getElementById('colorPicker').value || '#fff',
     strokeWeight: 3,
     strokeOpacity: 0.6,
     strokeStyle: 'dashed',
@@ -755,6 +866,85 @@ function onArrowMove(e) {
 function clearArrowState() {
   arrowStart = null;
   if (arrowPreview) { arrowPreview.setMap(null); arrowPreview = null; }
+}
+
+function clearTrafficState() {
+  trafficDraft = null;
+  trafficPointerId = null;
+  if (trafficPreview) { trafficPreview.setMap(null); trafficPreview = null; }
+}
+
+function setupTrafficDrawing() {
+  const mapEl = document.getElementById('map');
+  const toMapPoint = (ev) => {
+    const rect = mapEl.getBoundingClientRect();
+    const x = ev.clientX - rect.left;
+    const y = ev.clientY - rect.top;
+    return { pixel: new AMap.Pixel(x, y), lnglat: map.containerToLngLat(new AMap.Pixel(x, y)) };
+  };
+
+  mapEl.addEventListener('pointerdown', ev => {
+    if (tool !== 'traffic') return;
+    const p = toMapPoint(ev);
+    ev.preventDefault();
+    ev.stopPropagation();
+    mapEl.setPointerCapture(ev.pointerId);
+    trafficPointerId = ev.pointerId;
+    clearArrowState();
+    clearTrafficState();
+    trafficDraft = {
+      points: [[p.lnglat.getLng(), p.lnglat.getLat()]],
+      lastPixel: p.pixel
+    };
+    trafficPreview = new AMap.Polyline({
+      path: trafficDraft.points,
+      strokeColor: '#ff9800',
+      strokeWeight: 5,
+      strokeOpacity: 0.75,
+      strokeStyle: 'dashed',
+      bubble: false,
+      clickable: false
+    });
+    trafficPreview.setMap(map);
+    document.getElementById('coordBar').textContent = '拖动画出导流线，松开完成';
+  });
+
+  mapEl.addEventListener('pointermove', ev => {
+    if (tool !== 'traffic' || !trafficDraft || trafficPointerId !== ev.pointerId) return;
+    const p = toMapPoint(ev);
+    const dx = p.pixel.getX() - trafficDraft.lastPixel.getX();
+    const dy = p.pixel.getY() - trafficDraft.lastPixel.getY();
+    if (Math.hypot(dx, dy) < 4) return;
+    trafficDraft.points.push([p.lnglat.getLng(), p.lnglat.getLat()]);
+    trafficDraft.lastPixel = p.pixel;
+    if (trafficPreview && typeof trafficPreview.setPath === 'function') {
+      trafficPreview.setPath(trafficDraft.points);
+    }
+  });
+
+  const finishTraffic = ev => {
+    if (tool !== 'traffic' || !trafficDraft || trafficPointerId !== ev.pointerId) return;
+    ev.preventDefault();
+    ev.stopPropagation();
+    const pts = trafficDraft.points.slice();
+    try { mapEl.releasePointerCapture(ev.pointerId); } catch (err) {}
+    if (pts.length >= 2) {
+      history.push({ type: 'traffic', points: pts, size: 3 });
+      saveHistory();
+      renderAll();
+    } else {
+      clearTrafficState();
+    }
+    clearTrafficState();
+  };
+
+  mapEl.addEventListener('pointerup', finishTraffic);
+  mapEl.addEventListener('pointercancel', finishTraffic);
+  mapEl.addEventListener('pointerleave', ev => {
+    if (tool === 'traffic' && trafficDraft && trafficPointerId === ev.pointerId) {
+      finishTraffic(ev);
+    }
+  });
 }
 
 // ==================== 弹窗 ====================
@@ -874,6 +1064,7 @@ function showTextPopup(lng, lat) {
 function setTool(t) {
   tool = t;
   clearArrowState();
+  clearTrafficState();
   document.querySelectorAll('.btn').forEach(b=>b.classList.remove('active'));
   const btn = document.getElementById('btn'+t.charAt(0).toUpperCase()+t.slice(1));
   if (btn) btn.classList.add('active');
@@ -884,7 +1075,11 @@ function setTool(t) {
   const mapDiv = document.getElementById('map');
   if (t === 'move') mapDiv.style.cursor = 'default';
   else if (t === 'eraser') mapDiv.style.cursor = 'not-allowed';
+  else if (t === 'traffic') mapDiv.style.cursor = 'crosshair';
   else mapDiv.style.cursor = 'crosshair';
+  if (map && typeof map.setStatus === 'function') {
+    map.setStatus({ dragEnable: t !== 'traffic' });
+  }
 
   // 只更新 draggable 状态，不重新渲染
   const draggable = (t === 'move');
@@ -1047,9 +1242,12 @@ async function initAndLoad() {
 
   // 自动调整视野
   const points = history.filter(a => a.lng && a.lat).map(a => [a.lng, a.lat]);
-  const arrowPts = history.filter(a => a.type === 'arrow' || a.type === 'traffic')
-    .flatMap(a => [[a.lng1, a.lat1], [a.lng2, a.lat2]]);
-  const allPts = [...points, ...arrowPts].filter(p => p[0] && p[1]);
+  const linePts = history.flatMap(a => {
+    if (a.type === 'arrow') return [[a.lng1, a.lat1], [a.lng2, a.lat2]];
+    if (a.type === 'traffic') return getTrafficPath(a);
+    return [];
+  });
+  const allPts = [...points, ...linePts].filter(p => p[0] && p[1]);
 
   if (allPts.length > 1) {
     map.setFitView();
