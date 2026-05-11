@@ -331,6 +331,7 @@ function initMap() {
   });
 
   map.on('click', onMapClick);
+  map.on('mousemove', onArrowMove); // 始终监听，内部判断工具类型
 
   // 实时显示鼠标坐标
   map.on('mousemove', function(e) {
@@ -441,6 +442,9 @@ function renderParking(item, idx) {
       history.splice(idx, 1);
       saveHistory();
       renderAll();
+    } else if (tool === 'arrow' || tool === 'traffic') {
+      // 箭头/导流线模式：模拟地图点击
+      onMapClick({ lnglat: e.lnglat });
     }
   });
 
@@ -494,6 +498,8 @@ function renderGuard(item, idx) {
       history.splice(idx, 1);
       saveHistory();
       renderAll();
+    } else if (tool === 'arrow' || tool === 'traffic') {
+      onMapClick({ lnglat: e.lnglat });
     }
   });
 
@@ -514,12 +520,14 @@ function renderArrow(item, idx) {
   polyline.setMap(map);
   amapOverlays['arrow_' + idx] = polyline;
 
-  // 点击删除
+  // 点击删除 / 箭头穿透
   polyline.on('click', e => {
     if (tool === 'eraser') {
       history.splice(idx, 1);
       saveHistory();
       renderAll();
+    } else if (tool === 'arrow' || tool === 'traffic') {
+      onMapClick({ lnglat: e.lnglat });
     }
   });
 }
@@ -543,6 +551,8 @@ function renderTraffic(item, idx) {
       history.splice(idx, 1);
       saveHistory();
       renderAll();
+    } else if (tool === 'arrow' || tool === 'traffic') {
+      onMapClick({ lnglat: e.lnglat });
     }
   });
 }
@@ -597,16 +607,9 @@ function onMapClick(e) {
   } else if (tool === 'arrow' || tool === 'traffic') {
     if (!arrowStart) {
       arrowStart = { lng, lat };
-      document.getElementById('popupTitle').textContent = tool === 'arrow' ? '箭头起点已设定' : '导流线起点已设定';
-      // 画个起点标记
-      const startMarker = new AMap.Marker({
-        position: [lng, lat],
-        content: '<div style="width:8px;height:8px;background:#e94560;border-radius:50%;border:2px solid #fff;"></div>',
-        offset: new AMap.Pixel(-6, -6),
-        zIndex: 200
-      });
-      startMarker.setMap(map);
-      amapOverlays['_arrowStart'] = startMarker;
+      // 不画起点标记，避免拦截第二次点击
+      // 提示状态
+      document.getElementById('coordBar').textContent = '起点已设定，点击终点完成';
     } else {
       // 完成箭头/导流线
       const color = document.getElementById('colorPicker').value;
@@ -615,11 +618,6 @@ function onMapClick(e) {
         history.push({ type: 'arrow', lng1: arrowStart.lng, lat1: arrowStart.lat, lng2: lng, lat2: lat, color, size });
       } else {
         history.push({ type: 'traffic', lng1: arrowStart.lng, lat1: arrowStart.lat, lng2: lng, lat2: lat, size });
-      }
-      // 清除起点标记
-      if (amapOverlays['_arrowStart']) {
-        amapOverlays['_arrowStart'].setMap(null);
-        delete amapOverlays['_arrowStart'];
       }
       if (arrowPreview) { arrowPreview.setMap(null); arrowPreview = null; }
       arrowStart = null;
@@ -637,7 +635,7 @@ function setupArrowPreview() {
 }
 
 function onArrowMove(e) {
-  if (!arrowStart) return;
+  if (!arrowStart || (tool !== 'arrow' && tool !== 'traffic')) return;
   const lng = e.lnglat.getLng(), lat = e.lnglat.getLat();
   if (arrowPreview) arrowPreview.setMap(null);
   arrowPreview = new AMap.Polyline({
@@ -645,7 +643,9 @@ function onArrowMove(e) {
     strokeColor: tool === 'traffic' ? '#ff9800' : (document.getElementById('colorPicker').value || '#fff'),
     strokeWeight: 3,
     strokeOpacity: 0.6,
-    strokeStyle: 'dashed'
+    strokeStyle: 'dashed',
+    bubble: true,
+    clickable: false
   });
   arrowPreview.setMap(map);
 }
@@ -653,8 +653,6 @@ function onArrowMove(e) {
 function clearArrowState() {
   arrowStart = null;
   if (arrowPreview) { arrowPreview.setMap(null); arrowPreview = null; }
-  if (amapOverlays['_arrowStart']) { amapOverlays['_arrowStart'].setMap(null); delete amapOverlays['_arrowStart']; }
-  map.off('mousemove', onArrowMove);
 }
 
 // ==================== 弹窗 ====================
@@ -791,11 +789,6 @@ function setTool(t) {
   Object.values(amapOverlays).forEach(o => {
     if (o && typeof o.setDraggable === 'function') o.setDraggable(draggable);
   });
-
-  // 箭头/导流线监听
-  if (t === 'arrow' || t === 'traffic') {
-    map.on('mousemove', onArrowMove);
-  }
 }
 
 // ==================== 统计 ====================
