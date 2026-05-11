@@ -18,7 +18,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **管理后台**（`public/admin.html`）：
 - 高德地图 JS API 1.4.15 + 卫星图层
-- 工具：停车场、指挥员、文字、箭头、导流线、移动、删除
+- 工具：停车场、指挥员、出村口、进村口、文字、箭头、导流线、移动、删除
 - 登录密码：硬编码 `112233`，session 存储
 - 底部实时显示鼠标经纬度，点击可复制
 - 支持数据导入/导出（JSON 文件）
@@ -27,7 +27,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 **来宾页**（`public/viewer.html`）：
 - 5 秒自动刷新停车数据
 - 显示停车场状态标记（充足/紧张/已满）+ 导航按钮
-- 显示指挥员、文字、箭头、导流线标注
+- 显示指挥员、出村口、进村口、文字、箭头、导流线标注
+- 出村口、进村口标记提供高德导航按钮
 - 左上角悬浮数据面板（总车位/已停/剩余）
 - 每次刷新前清除所有旧 overlay 防止残留
 
@@ -46,6 +47,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 annotation 类型及字段：
 - `parking`: `name`, `cap`, `current`, `color`, `lng`, `lat`
 - `guard`: `name`, `lng`, `lat`
+- `villageExit`: `lng`, `lat`
+- `villageEntry`: `lng`, `lat`
 - `text`: `text`, `color`, `fontSize`, `lng`, `lat`
 - `arrow`: `lng1`, `lat1`, `lng2`, `lat2`, `color`, `size`
 - `traffic`: `lng1`, `lat1`, `lng2`, `lat2`, `size`

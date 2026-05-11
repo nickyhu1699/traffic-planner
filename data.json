@@ -161,8 +161,18 @@
     {
       "type": "guard",
       "name": "汉环",
-      "lng": 116.304723,
-      "lat": 23.914696
+      "lng": 116.304563,
+      "lat": 23.914255
+    },
+    {
+      "type": "villageExit",
+      "lng": 116.309578,
+      "lat": 23.914985
+    },
+    {
+      "type": "villageEntry",
+      "lng": 116.304997,
+      "lat": 23.914824
     }
   ],
   "parkingState": {

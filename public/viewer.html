@@ -241,6 +241,38 @@ function updateMapMarkers(lots, allAnnotations) {
     points.push([g.lng, g.lat]);
   });
 
+  // 出村口 / 进村口
+  allAnnotations.filter(a => (a.type === 'villageExit' || a.type === 'villageEntry') && a.lng && a.lat).forEach((g, i) => {
+    const kind = g.type === 'villageExit' ? 'exit' : 'entry';
+    const key = `${g.type}_${i}`;
+    const cfg = getVillageGateConfig(kind);
+    const name = g.type === 'villageExit' ? '出村口' : '进村口';
+    const content = `<div style="text-align:center;white-space:nowrap;">
+      <div style="
+        background:rgba(22,33,62,0.92);border:2px solid ${cfg.color};
+        border-radius:10px;padding:6px 10px;min-width:92px;
+        box-shadow:0 2px 8px rgba(0,0,0,0.35);
+      ">
+        <div style="display:flex;align-items:center;justify-content:center;color:${cfg.color};">${cfg.icon}</div>
+        <div style="color:#fff;font-size:12px;font-weight:700;margin-top:2px;">${name}</div>
+        <div style="color:#8899aa;font-size:9px;">村口导航点</div>
+        <div onclick="event.stopPropagation();window.open('https://uri.amap.com/navigation?to=${g.lng},${g.lat},${encodeURIComponent(name)}&mode=car','_blank')"
+          style="margin-top:4px;padding:2px 0;border-radius:3px;background:${cfg.color};color:#fff;font-size:9px;cursor:pointer;font-weight:600;">
+          点击导航到此
+        </div>
+      </div>
+    </div>`;
+    const marker = new AMap.Marker({
+      position: [g.lng, g.lat],
+      content: content,
+      offset: new AMap.Pixel(-46, -34),
+      zIndex: 112
+    });
+    marker.setMap(map);
+    markers[key] = marker;
+    points.push([g.lng, g.lat]);
+  });
+
   // 文字标注
   allAnnotations.filter(a => a.type === 'text' && a.lng && a.lat).forEach((t, i) => {
     const key = 'text_' + i;
@@ -300,6 +332,29 @@ function updateMapMarkers(lots, allAnnotations) {
       map.setFitView(Object.values(markers));
     }
   }
+}
+
+function getVillageGateConfig(kind) {
+  if (kind === 'exit') {
+    return {
+      color: '#ff7043',
+      icon: `
+        <svg viewBox="0 0 40 40" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M6 20h16"/>
+          <path d="M18 12l8 8-8 8"/>
+          <path d="M30 8v24"/>
+        </svg>`
+    };
+  }
+  return {
+    color: '#4caf50',
+    icon: `
+      <svg viewBox="0 0 40 40" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M34 20H18"/>
+        <path d="M22 12l-8 8 8 8"/>
+        <path d="M10 8v24"/>
+      </svg>`
+  };
 }
 
 // 初始化

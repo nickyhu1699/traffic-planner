@@ -221,6 +221,22 @@ input[type="range"] { flex: 1; }
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="5" r="3"/><path d="M12 8v5"/><path d="M9 11l3 2 3-2"/><path d="M10 21l2-8 2 8"/></svg>
           指挥员
         </button>
+        <button class="btn" id="btnVillageExit" onclick="setTool('villageExit')" style="color:#ff7043;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M5 12h9"/>
+            <path d="M10 7l4 5-4 5"/>
+            <path d="M19 5v14"/>
+          </svg>
+          出村口
+        </button>
+        <button class="btn" id="btnVillageEntry" onclick="setTool('villageEntry')" style="color:#4caf50;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M19 12H10"/>
+            <path d="M14 7l-4 5 4 5"/>
+            <path d="M5 5v14"/>
+          </svg>
+          进村口
+        </button>
         <button class="btn" id="btnEraser" onclick="setTool('eraser')">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 20H7L3 16l9-9 8 8-4 4z"/></svg>
           删除
@@ -297,6 +313,7 @@ input[type="range"] { flex: 1; }
       <div class="shortcut-list">
         <kbd>V</kbd>移动 <kbd>T</kbd>文字 <kbd>P</kbd>停车场<br>
         <kbd>A</kbd>箭头 <kbd>F</kbd>导流 <kbd>G</kbd>指挥员 <kbd>E</kbd>删除<br>
+        <kbd>O</kbd>出村口 <kbd>I</kbd>进村口<br>
         <kbd>Ctrl+Z</kbd>撤销
       </div>
     </div>
@@ -396,9 +413,86 @@ function renderAll() {
 function renderOne(item, idx) {
   if (item.type === 'parking') renderParking(item, idx);
   else if (item.type === 'guard') renderGuard(item, idx);
+  else if (item.type === 'villageExit') renderVillageGate(item, idx, 'exit');
+  else if (item.type === 'villageEntry') renderVillageGate(item, idx, 'entry');
   else if (item.type === 'arrow') renderArrow(item, idx);
   else if (item.type === 'traffic') renderTraffic(item, idx);
   else if (item.type === 'text') renderText(item, idx);
+}
+
+function getVillageGateConfig(kind) {
+  if (kind === 'exit') {
+    return {
+      color: '#ff7043',
+      title: '出村口',
+      subtitle: '出村方向',
+      icon: `
+        <svg viewBox="0 0 40 40" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M6 20h16"/>
+          <path d="M18 12l8 8-8 8"/>
+          <path d="M30 8v24"/>
+        </svg>`
+    };
+  }
+  return {
+    color: '#4caf50',
+    title: '进村口',
+    subtitle: '进村方向',
+    icon: `
+      <svg viewBox="0 0 40 40" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M34 20H18"/>
+        <path d="M22 12l-8 8 8 8"/>
+        <path d="M10 8v24"/>
+      </svg>`
+  };
+}
+
+function renderVillageGate(item, idx, kind) {
+  if (!item.lng || !item.lat) return;
+  const cfg = getVillageGateConfig(kind);
+  const content = `<div style="
+    background:rgba(22,33,62,0.92); border:2px solid ${cfg.color};
+    border-radius:10px; padding:6px 10px; color:#fff; font-size:12px;
+    text-align:center; white-space:nowrap; font-family:-apple-system,sans-serif;
+    min-width:92px;
+  ">
+    <div style="display:flex;align-items:center;justify-content:center;gap:6px;color:${cfg.color};">
+      ${cfg.icon}
+    </div>
+    <div style="font-weight:700;font-size:13px;margin-top:2px;">${cfg.title}</div>
+    <div style="font-size:10px;color:#8899aa;">${cfg.subtitle}</div>
+    <div onclick="event.stopPropagation();" style="margin-top:3px;padding:2px 0;border-radius:3px;background:rgba(255,255,255,0.15);color:#ccc;font-size:9px;cursor:pointer;">
+      拖动 / 删除
+    </div>
+  </div>`;
+
+  const marker = new AMap.Marker({
+    position: [item.lng, item.lat],
+    content: content,
+    offset: new AMap.Pixel(-46, -34),
+    zIndex: 115,
+    draggable: tool === 'move'
+  });
+
+  marker.on('dragend', e => {
+    const pos = e.lnglat;
+    item.lng = pos.lng;
+    item.lat = pos.lat;
+    saveHistory();
+  });
+
+  marker.on('click', e => {
+    if (tool === 'eraser') {
+      history.splice(idx, 1);
+      saveHistory();
+      renderAll();
+    } else if (tool === 'arrow' || tool === 'traffic') {
+      onMapClick({ lnglat: e.lnglat });
+    }
+  });
+
+  marker.setMap(map);
+  amapOverlays[`villageGate_${kind}_${idx}`] = marker;
 }
 
 function renderParking(item, idx) {
@@ -602,6 +696,14 @@ function onMapClick(e) {
     showParkingPopup(lng, lat);
   } else if (tool === 'guard') {
     showGuardPopup(lng, lat);
+  } else if (tool === 'villageExit') {
+    history.push({ type: 'villageExit', lng, lat });
+    saveHistory();
+    renderAll();
+  } else if (tool === 'villageEntry') {
+    history.push({ type: 'villageEntry', lng, lat });
+    saveHistory();
+    renderAll();
   } else if (tool === 'text') {
     showTextPopup(lng, lat);
   } else if (tool === 'arrow' || tool === 'traffic') {
@@ -918,6 +1020,8 @@ document.addEventListener('keydown', e=>{
   if(e.key==='p'||e.key==='P')setTool('parking');
   if(e.key==='f'||e.key==='F')setTool('traffic');
   if(e.key==='g'||e.key==='G')setTool('guard');
+  if(e.key==='o'||e.key==='O')setTool('villageExit');
+  if(e.key==='i'||e.key==='I')setTool('villageEntry');
 });
 
 // ==================== 登录 ====================
